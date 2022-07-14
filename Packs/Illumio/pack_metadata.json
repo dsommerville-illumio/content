@@ -1,0 +1,31 @@
+{
+    "name": "Illumio Rapid Ransomware Containment",
+    "description": "Illumio Rapid Ransomware Containment for Cortex XSOAR",
+    "support": "partner",
+    "currentVersion": "1.0.0",
+    "author": "Illumio",
+    "url": "",
+    "email": "app-integrations@illumio.com",
+    "categories": [
+        "Network Security"
+    ],
+    "tags": [
+        "ransomware",
+        "containment",
+        "illumio",
+        "network",
+        "security",
+        "automation",
+        "malware"
+    ],
+    "useCases": [],
+    "keywords": [],
+    "marketplaces": [
+        "xsoar",
+        "marketplacev2"
+    ],
+    "devEmail": [
+        "app-integrations@illumio.com"
+    ],
+    "githubUser": []
+}
