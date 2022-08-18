@@ -3,9 +3,16 @@ commonfields:
   id: IllumioCore
   version: -1
 configuration:
-- additionalinfo: The FQDN/IP the integration should connect to.
+- additionalinfo: The URL this integration should connect to.
   display: Server URL
   name: url
+  required: true
+  type: 0
+- additionalinfo: The port number to establish the connection.
+  defaultvalue: '443'
+  display: Port
+  hidden: false
+  name: port
   required: true
   type: 0
 - additionalinfo: The API user for authentication

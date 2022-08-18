@@ -4,35 +4,45 @@ from CommonServerPython import *  # noqa # pylint: disable=unused-wildcard-impor
 from CommonServerUserPython import *  # noqa
 from illumio import PolicyComputeEngine
 
-# Disable insecure warnings
 urllib3.disable_warnings()
 
 ''' CONSTANTS '''
 
-DATE_FORMAT = '%Y-%m-%dT%H:%M:%SZ'  # ISO8601 format with UTC, default in XSOAR
-ERRORS = {
-    'INVALID_ORG_ID': "{} is an invalid value. Organization ID must be a non-zero and positive numeric value.",
-    'NO_RECORDS': 'No Record Found.',
-    'MISSING_REQUIRED_PARAM': "{} is a required parameter. Please provide correct value.",
-    'INVALID_PORT_NUMBER': '{} is an invalid value for port. Value must be in 1 to 65535.',
-    'INVALID_SINGLE_SELECT_PARAM': '{} is an invalid value for {}. Possible values are: {}.',
-    'INVALID_MULTI_SELECT_PARAM': "Invalid value for {}. Possible comma separated values are {}."
-}
+MIN_PORT = 1
+MAX_PORT = 65535
+
+'''EXCEPTION CLASS'''
+
+
+class InvalidPortException(Exception):
+    """Exception class for Invalid port."""
+
+    def __init__(self, port):
+        self.message = "{} is an invalid value for port. Value must be in 1 to 65535.".format(port)
+        super().__init__(self.message)
+
 
 ''' CLIENT CLASS '''
 
 
 class IllumioClient:
-    """IllumioClient class to interact with the service SDK"""
+    """IllumioClient class to interact with the service SDK."""
 
-    def __init__(self, base_url: str, api_user: str, api_key: str, proxy: dict, org_id: int) -> None:
-        port = base_url.split(':')[-1]
+    def __init__(self, base_url: str, port: int, api_user: str, api_key: str, proxy: dict, org_id: int) -> None:
+        """Construct IllumioClient class object.
+
+        Args:
+            base_url: the base url to establish connection with the illumio sdk.
+            port: the port number to establish connection.
+            api_user: the username to authenticate with the illumio sdk.
+            api_key: the api key to authenticate with the illumio sdk.
+            proxy: whether to use the demisto's proxy settings or not.
+            org_id: the id of the organization to be referenced.
+        """
+
         self.pce = PolicyComputeEngine(url=base_url, port=port, org_id=org_id)
         self.pce.set_proxies(http_proxy=proxy.get("http"), https_proxy=proxy.get('https'))
         self.pce.set_credentials(api_user, api_key)
-
-
-''' COMMAND FUNCTIONS '''
 
 
 def test_module(client: IllumioClient) -> str:
@@ -40,32 +50,34 @@ def test_module(client: IllumioClient) -> str:
 
     Returning 'ok' indicates that the integration works like it is supposed to.
     Connection to the service is successful.
-    Raises:
-     exceptions if something goes wrong.
 
-    :type client: ``IllumioClient``
-    :param client: IllumioClient to be used.
+    Args:
+        client: IllumioClient to be used.
 
-    :rtype: ``str``
-    :return: 'ok' if test passed, anything else will fail the test.
+    Returns: 'ok' if test passed, anything else will fail the test.
     """
-
-    params = {
-        "max_results": 1
-    }
-    client.pce.workloads.get(params=params)
-    return 'ok'
+    response = client.pce.check_connection()
+    if response:
+        return 'ok'
+    raise ValueError("Failed to establish connection with provided credentials.")
 
 
 def main():
-    """main function, parses params and runs command functions"""
-
+    """Parse params and runs command functions."""
     params = demisto.params()
     api_user = params.get('api_user')
     api_key = params.get('api_key')
-    org_id = arg_to_number(params.get('org_id'))
-    if org_id is None or org_id <= 0:
-        raise ValueError(ERRORS['INVALID_ORG_ID'].format(org_id))
+
+    port = arg_to_number(params.get('port'))
+    if port < MIN_PORT or port > MAX_PORT:  # type: ignore
+        raise InvalidPortException(port)
+
+    org_id = arg_to_number(params.get('org_id'), required=True)
+    if org_id <= 0:  # type: ignore
+        return_error(
+            message="{} is an invalid value. Organization ID must be a non-zero and positive numeric value.".format(
+                port))
+
     base_url = params.get('url')
     proxy = handle_proxy()
 
@@ -75,19 +87,19 @@ def main():
 
         client = IllumioClient(
             base_url=base_url,
+            port=port,  # type: ignore
             proxy=proxy,
             api_user=api_user,
             api_key=api_key,
-            org_id=org_id
+            org_id=org_id  # type: ignore
         )
         if command == 'test-module':
             result = test_module(client)
         else:
             raise NotImplementedError(f'Command {command} is not implemented')
-        return_results(result)  # Returns either str, CommandResults and a list of CommandResults
-    # Log exceptions and return errors
+        return_results(result)
     except Exception as e:
-        demisto.error(traceback.format_exc())  # print the traceback
+        demisto.error(traceback.format_exc())
         return_error(f'Failed to execute {command} command.\nError:\n{str(e)}')
 
 
