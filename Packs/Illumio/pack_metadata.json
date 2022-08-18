@@ -1,11 +1,11 @@
 {
-    "name": "Illumio Rapid Ransomware Containment",
+    "name": "Illumio",
     "description": "Provides integrations and playbooks to interact with Illumio Core APIs and automate network security tasks",
     "support": "partner",
     "currentVersion": "1.0.0",
-    "author": "Illumio",
+    "author": "illumio",
     "url": "https://support.illumio.com",
-    "email": "app-integrations@illumio.com",
+    "email": "support@illumio.com",
     "categories": [
         "Network Security"
     ],
@@ -21,9 +21,6 @@
         "marketplacev2"
     ],
     "githubUser": [
-        "crestdatasystems",
-        "dsommerville-illumio",
-        "illumio-app-integrations"
-    ],
-    "devEmail": []
+        "crestdatasystems"
+    ]
 }
