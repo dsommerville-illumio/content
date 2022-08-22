@@ -52,6 +52,131 @@ description: Connects to Illumio Core APIs to perform investigative and restorat
 display: Illumio Core
 name: IllumioCore
 script:
+  commands:
+  - arguments:
+    - default: false
+      description: Port number.
+      isArray: false
+      name: port
+      required: true
+      secret: false
+    - auto: PREDEFINED
+      default: false
+      defaultValue: tcp
+      description: |-
+        Communication Protocol
+
+        Supported values are: 'tcp' and 'udp'
+      isArray: false
+      name: protocol
+      predefined:
+      - tcp
+      - udp
+      required: false
+      secret: false
+    - default: false
+      defaultValue: 1 week ago
+      description: |-
+        Start of analysis range.
+
+        Supported formats: N minutes, N hours, N days, N weeks, N months, N years, yyyy-mm-dd, yyyy-mm-ddTHH:MM:SSZ
+
+        For example: 01 Mar 2021, 01 Feb 2021 04:45:33, 2022-04-17T14:05:44Z
+      isArray: false
+      name: start_time
+      required: false
+      secret: false
+    - default: false
+      defaultValue: now
+      description: |-
+        End of analysis range.
+
+        Supported formats: N minutes, N hours, N days, N weeks, N months, N years, yyyy-mm-dd, yyyy-mm-ddTHH:MM:SSZ
+
+        For example: 01 Mar 2021, 01 Feb 2021 04:45:33, 2022-04-17T14:05:44Z
+      isArray: false
+      name: end_time
+      required: false
+      secret: false
+    - default: false
+      defaultValue: potentially_blocked, unknown
+      description: |-
+        List of policy decisions to include in the search results. Supports comma-separated values.
+
+        Supported values are: 'potentially_blocked', 'blocked', 'unknown', and 'allowed'
+      isArray: true
+      name: policy_decisions
+      required: false
+      secret: false
+    deprecated: false
+    description: Retrieves traffic flow of a particular port & protocol within the
+      specified time range based on policy decisions.
+    execution: false
+    name: illumio-traffic-analysis
+    outputs:
+    - contextPath: Illumio.TrafficFlows.src.ip
+      description: IP of the source.
+      type: String
+    - contextPath: Illumio.TrafficFlows.dst.ip
+      description: Destination IP address.
+      type: String
+    - contextPath: Illumio.TrafficFlows.dst.workload.hostname
+      description: Destination workload hostname
+      type: String
+    - contextPath: Illumio.TrafficFlows.dst.workload.name
+      description: Destination workload name
+      type: String
+    - contextPath: Illumio.TrafficFlows.dst.workload.href
+      description: Destination workload URI
+      type: String
+    - contextPath: Illumio.TrafficFlows.dst.workload.os_type
+      description: Destination workload OS type.
+      type: String
+    - contextPath: Illumio.TrafficFlows.dst.workload.labels.href
+      description: Destination label URI.
+      type: String
+    - contextPath: Illumio.TrafficFlows.dst.workload.labels.key
+      description: Destination workload label key.
+      type: String
+    - contextPath: Illumio.TrafficFlows.dst.workload.labels.value
+      description: Destination workload label value.
+      type: String
+    - contextPath: Illumio.TrafficFlows.service.port
+      description: Port of the traffic
+      type: String
+    - contextPath: Illumio.TrafficFlows.service.proto
+      description: Protocol number of the traffic.
+      type: Number
+    - contextPath: Illumio.TrafficFlows.num_connections
+      description: Number of traffic flows reported in connections.
+      type: Number
+    - contextPath: Illumio.TrafficFlows.policy_decisions
+      description: |-
+        Indicates the policy decision for the flow. Indicates if the traffic
+        flow is allowed, potentially blocked (but allowed), or blocked.
+      type: String
+    - contextPath: Illumio.TrafficFlows.state
+      description: State of the flow.
+      type: String
+    - contextPath: Illumio.TrafficFlows.flow_direction
+      description: Flow direction of the traffic.
+      type: String
+    - contextPath: Illumio.TrafficFlows.dst_bi
+      description: |-
+        Bytes received till now by the destination over the flow
+        during the interval.
+      type: Number
+    - contextPath: Illumio.TrafficFlows.dst_bo
+      description: |-
+        Bytes sent till now by the destination over the flow
+        during the interval.
+      type: Number
+    - contextPath: Illumio.TrafficFlows.timestamp_range.last_detected
+      description: Time range when traffic was last detected.
+      type: Date
+    - contextPath: Illumio.TrafficFlows.timestamp_range.first_detected
+      description: Time range when traffic was first detected.
+      type: Date
   dockerimage: dev-illumio:1.0.0
   feed: false
   isfetch: false
