@@ -1,0 +1,69 @@
+category: Network Security
+commonfields:
+  id: IllumioCore
+  version: -1
+configuration:
+- additionalinfo: The URL this integration should connect to.
+  display: Server URL
+  name: url
+  required: true
+  type: 0
+- additionalinfo: The port number to establish the connection.
+  defaultvalue: '443'
+  display: Port
+  hidden: false
+  name: port
+  required: true
+  type: 0
+- additionalinfo: The API user for authentication
+  display: API Key Username
+  name: api_user
+  required: true
+  type: 4
+- additionalinfo: The API Key required to authenticate to the service.
+  display: API Secret
+  hidden: false
+  name: api_key
+  required: true
+  type: 4
+- additionalinfo: The organization ID to use when calling org-dependent APIs.
+  defaultvalue: '1'
+  display: Organization ID
+  hidden: false
+  name: org_id
+  required: true
+  type: 0
+- additionalinfo: Indicates whether to allow connections without verifying SSL certificate's
+    validity.
+  display: Trust any certificate (not secure)
+  hidden: false
+  name: insecure
+  required: false
+  type: 8
+- additionalinfo: Indicates whether to use XSOAR's system proxy settings to connect
+    to the API.
+  display: Use system proxy settings
+  hidden: false
+  name: proxy
+  required: false
+  type: 8
+description: Connects to Illumio Core APIs to perform investigative and restorative
+  actions.
+display: Illumio Core
+name: IllumioCore
+script:
+  dockerimage: dev-illumio:1.0.0
+  feed: false
+  isfetch: false
+  longRunning: false
+  longRunningPort: false
+  runonce: false
+  script: '-'
+  subtype: python3
+  type: python
+tests:
+- No tests (auto formatted)
+marketplaces:
+- xsoar
+- marketplacev2
+fromversion: 6.2.0
