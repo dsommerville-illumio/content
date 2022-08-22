@@ -3,22 +3,18 @@
 import io
 import json
 import pytest
+from illumio import PolicyComputeEngine
 from CommonServerPython import *  # noqa
 
 
 @pytest.fixture
 def mock_client():
     """Mock a client object with required data to mock."""
-    from IllumioCore import IllumioClient
 
-    return IllumioClient(
-        base_url="https://127.0.0.1:8443",
-        port=8443,
-        org_id=1,
-        api_user="dummy",
-        api_key="dummy-1",
-        proxy={}
-    )
+    client = PolicyComputeEngine(url="https://127.0.0.1:8443", port=8443, org_id=1)
+    client.set_credentials('dummy', 'dummy-1')
+
+    return client
 
 
 def util_load_json(path):
