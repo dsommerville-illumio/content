@@ -177,6 +177,93 @@ script:
     - contextPath: Illumio.TrafficFlows.timestamp_range.first_detected
       description: Time range when traffic was first detected.
       type: Date
+  - arguments:
+    - default: false
+      description: Virtual service name.
+      isArray: false
+      name: name
+      required: true
+      secret: false
+    - default: false
+      description: Port number.
+      isArray: false
+      name: port
+      required: true
+      secret: false
+    - auto: PREDEFINED
+      default: false
+      defaultValue: TCP
+      description: Communication protocol.
+      isArray: false
+      name: protocol
+      predefined:
+      - TCP
+      - UDP
+      required: false
+      secret: false
+    deprecated: false
+    description: Creates a virtual service for a particular port & protocol, which
+      can be further binded to workloads. Until provisioned with the 'illumio-object-provision'
+      command, this object will remain in a draft state.
+    execution: false
+    name: illumio-virtual-service-create
+    outputs:
+    - contextPath: Illumio.VirtualService.href
+      description: Label URI
+      type: String
+    - contextPath: Illumio.VirtualService.created_at
+      description: Virtual service creation time.
+      type: Date
+    - contextPath: Illumio.VirtualService.updated_at
+      description: Virtual service updated time.
+      type: Date
+    - contextPath: Illumio.VirtualService.deleted_at
+      description: Virtual service deleted time.
+      type: Date
+    - contextPath: Illumio.VirtualService.created_by.href
+      description: URI of the user who has created the virtual service.
+      type: String
+    - contextPath: Illumio.VirtualService.updated_by.href
+      description: URI of the user who has updated the virtual service.
+      type: String
+    - contextPath: Illumio.VirtualService.deleted_by.href
+      description: URI of the user who has deleted the virtual service.
+      type: String
+    - contextPath: Illumio.VirtualService.update_type
+      description: What type of modification has been done on the virtual service.
+      type: String
+    - contextPath: Illumio.VirtualService.name
+      description: Name of the virtual service.
+      type: String
+    - contextPath: Illumio.VirtualService.description
+      description: Description of the virtual service.
+      type: String
+    - contextPath: Illumio.VirtualService.pce_fqdn
+      description: PCE FQDN to assign to the virtual service.
+      type: String
+    - contextPath: Illumio.VirtualService.service_ports.port
+      description: Port of the virtual service.
+      type: Number
+    - contextPath: Illumio.VirtualService.service_ports.proto
+      description: Proto of the virtual service.
+      type: Number
+    - contextPath: Illumio.VirtualService.labels
+      description: Labels of the virtual service.
+      type: Unknown
+    - contextPath: Illumio.VirtualService.ip_overrides
+      description: Array of IPs or CIDRs as IP overrides.
+      type: Unknown
+    - contextPath: Illumio.VirtualService.apply_to
+      description: 'Firewall rule target for workloads bound to this virtual service:
+        host_only or internal_bridge_network.'
+      type: String
+    - contextPath: Illumio.VirtualService.caps
+      description: Array of permissions for the entity for the current user - an empty
+        array implies read only access.
+      type: Unknown
+    - contextPath: Illumio.VirtualService.service_addresses
+      description: Service addresses of the virtual service.
+      type: Unknown
   dockerimage: dev-illumio:1.0.0
   feed: false
   isfetch: false

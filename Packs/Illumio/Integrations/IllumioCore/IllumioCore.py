@@ -3,6 +3,7 @@ import urllib3
 from CommonServerPython import *  # noqa # pylint: disable=unused-wildcard-import
 from CommonServerUserPython import *  # noqa
 from illumio import PolicyComputeEngine, convert_protocol, ServicePort
+from illumio.policyobjects import ServicePort, VirtualService
 from illumio.explorer import TrafficQuery
 
 urllib3.disable_warnings()
@@ -12,6 +13,7 @@ urllib3.disable_warnings()
 MIN_PORT = 1
 MAX_PORT = 65535
 HR_DATE_FORMAT = "%d %b %Y, %I:%M %p"
+SOCKET_PREFIX = "IPPROTO_"
 VALID_PROTOCOLS = ['tcp', 'udp']
 VALID_POLICY_DECISIONS = ['potentially_blocked', 'blocked', 'unknown', 'allowed']
 
@@ -27,7 +29,7 @@ class InvalidPortException(Exception):
 
 
 class InvalidSingleSelectException(Exception):
-    """Exception class for invalid protocol."""
+    """Exception class for invalid single-select option."""
 
     def __init__(self, value, argument, argument_list):
         self.message = "{} is an invalid value for {}. Possible values are: {}.".format(value, argument, argument_list)
@@ -35,7 +37,7 @@ class InvalidSingleSelectException(Exception):
 
 
 class InvalidMultiSelectException(Exception):
-    """Exception class for invalid protocol."""
+    """Exception class for invalid multi-select option."""
 
     def __init__(self, argument, argument_list):
         self.message = "Invalid value for {}. Possible comma separated values are {}.".format(argument, argument_list)
@@ -65,6 +67,33 @@ def validate_arguments_for_traffic_analysis(port: Optional[int], policy_decision
 
     if protocol not in VALID_PROTOCOLS:
         raise InvalidSingleSelectException(protocol, "protocol", VALID_PROTOCOLS)
+
+
+def validate_arguments_for_illumio_virtual_service_create_command(name: str | None, port: str | None,
+                                                                  protocol: str) -> tuple:
+    """Validate and convert arguments for illumio virtual service create command.
+
+    Args:
+        name: Name of virtual service.
+        port: Port number.
+        protocol: Protocol name.
+
+    Returns:
+        Returns tuple of converted values (port, protocol).
+    """
+    validate_required_parameters(name=name, port=port)
+
+    port = arg_to_number(port, arg_name="port")  # type: ignore
+
+    if port != -1 and (port > MAX_PORT or port < MIN_PORT):  # type: ignore
+        raise ValueError("{} is an invalid value for port. Value must be in 1 to 65535 or -1.".format(port))
+
+    if protocol not in VALID_PROTOCOLS:
+        raise InvalidSingleSelectException(protocol, 'protocol', VALID_PROTOCOLS)
+
+    proto = convert_protocol(protocol)
+    return port, proto
+
 
 
 def prepare_hr_for_traffic_analysis(response: list, protocol: str) -> str:
@@ -98,6 +127,38 @@ def prepare_hr_for_traffic_analysis(response: list, protocol: str) -> str:
                "Policy Decision", "State", "Flow Direction", "First Detected", "Last Detected"]
 
     return tableToMarkdown("Traffic Analysis:", hr_output, headers=headers, removeNull=True)
+
+
+def prepare_hr_for_illumio_virtual_service_create_command(result: dict) -> str:
+    """Prepare human-readable output for illumio virtual service create command.
+
+    Args:
+        result: result returned after creating Virtual Service.
+
+    Returns:
+        human-readable output.
+    """
+    table = {
+        num: name[len(SOCKET_PREFIX):]
+        for name, num in vars(socket).items()
+        if name.startswith(SOCKET_PREFIX)
+    }
+    hr_outputs = []
+    for service_port in result.get("service_ports", []):
+        hr_outputs.append({
+            "Virtual Service HREF": result.get("href"),
+            "Created At": arg_to_datetime(result.get("created_at"), '').strftime(HR_DATE_FORMAT),  # type: ignore
+            "Updated At": arg_to_datetime(result.get("updated_at", '')).strftime(HR_DATE_FORMAT),  # type: ignore
+            "Name": result.get("name"),
+            "Description": result.get("description"),
+            "Service Port": service_port.get("port")
+            if "port" in service_port
+            else "all ports have been selected",
+            "Service Protocol": table.get(service_port.get("proto"))})
+    headers = ["Virtual Service HREF", "Created At", "Updated At", "Name", "Description", "Service Port",
+               "Service Protocol"]
+    title = f'Virtual Service:\n#### Successfully created virtual service: {result.get("href")}\n'
+    return tableToMarkdown(title, hr_outputs, headers=headers, removeNull=True)
 
 
 def validate_required_parameters(**kwargs) -> None:
@@ -193,6 +254,35 @@ def illumio_traffic_analysis_command(client: PolicyComputeEngine, args: Dict[str
     )
 
 
+def illumio_virtual_service_create_command(client: PolicyComputeEngine,
+                                           args: Dict[str, any]) -> CommandResults:  # type: ignore
+    """Command function for virtual-service-create command.
+
+    Args:
+        client: Client object to be used.
+        args: arguments passed with the command.
+
+    Returns:
+        standard command results.
+    """
+    port = args.get("port")
+    protocol = args.get("protocol", "tcp").lower()
+    name = args.get("name")
+
+    port, proto = validate_arguments_for_illumio_virtual_service_create_command(name, port, protocol)
+    validate_required_parameters(protocol=proto, name=name)
+
+    service = VirtualService(name=name, service_ports=[ServicePort(port=port, proto=proto)])
+    virtual_service = client.virtual_services.create(service)  # type: ignore
+
+    demisto.info("Created virtual service with HREF '{}'".format(virtual_service.href))
+    virtual_service_json = virtual_service.to_json()
+    hr_output = prepare_hr_for_illumio_virtual_service_create_command(virtual_service_json)
+    return CommandResults(outputs_prefix="Illumio.VirtualService", readable_output=hr_output,
+                          outputs_key_field="href", raw_response=virtual_service_json,
+                          outputs=remove_empty_elements(virtual_service_json))
+
+
 def main():
     """Parse params and runs command functions."""
     try:
@@ -223,7 +313,9 @@ def main():
             return_results(test_module(client))
         else:
             ILLUMIO_COMMANDS = {
-                'illumio-traffic-analysis': illumio_traffic_analysis_command}
+                'illumio-traffic-analysis': illumio_traffic_analysis_command,
+                "illumio-virtual-service-create": illumio_virtual_service_create_command
+            }
             if ILLUMIO_COMMANDS.get(command):
                 args = demisto.args()
                 remove_nulls_from_dictionary(trim_spaces_from_args(args))

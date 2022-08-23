@@ -1,0 +1,24 @@
+{
+  "href": "/orgs/1/sec_policy/draft/virtual_services/dummy-uuid",
+  "name": "test_create_virtual_service",
+  "caps": [
+    "write",
+    "provision",
+    "delete"
+  ],
+  "created_at": "2022-08-01T08:44:28.857Z",
+  "updated_at": "2022-08-01T08:44:28.861Z",
+  "update_type": "create",
+  "created_by": {
+    "href": "/users/68"
+  },
+  "updated_by": {
+    "href": "/users/68"
+  },
+  "apply_to": "host_only",
+  "service_ports": [
+    {
+      "proto": 17
+    }
+  ]
+}
