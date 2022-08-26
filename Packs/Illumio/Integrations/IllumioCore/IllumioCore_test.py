@@ -1,16 +1,15 @@
 """Test file for Illumio Integration."""
 
 import io
-import json
+
 import pytest
-from illumio import PolicyComputeEngine, IllumioException
+
 from CommonServerPython import *  # noqa
-from IllumioCore import InvalidMultiSelectException, InvalidSingleSelectException, InvalidPortException, \
-    VALID_POLICY_DECISIONS, VALID_PROTOCOLS
+from IllumioCore import *
 
+""" CONSTANTS """
 
-'''CONSTANTS'''
-
+DIRECTORY_PATH = os.path.dirname(os.path.realpath(__file__))
 VIRTUAL_SERVICE_URL = "https://127.0.0.1:8443/api/v2/orgs/1/sec_policy/draft/virtual_services"
 INVALID_PORT_NUMBER_CREATE_VIRTUAL_SERVICE_EXCEPTION_MESSAGE = (
     "{} is an invalid value for port. Value must be in 1 to 65535 or -1.")
@@ -57,222 +56,277 @@ def test_test_module(requests_mock, mock_client):
     assert test_module(mock_client) == "ok"
 
 
-@pytest.mark.parametrize("args, err_msg", [
-    ({"port": "", "protocol": "tcp", 'start_time': '2022-07-17T12:58:33.528Z', 'end_time': "2022-07-18T12:58:33.529Z",
-      'policy_decisions': ['potentially_blocked']},
-     "{} is a required parameter. Please provide correct value.".format('port')),
-    ({"port": "dummy", "protocol": "tcp", 'start_time': '2022-07-17T12:58:33.528Z',
-      'end_time': "2022-07-18T12:58:33.529Z", 'policy_decisions': ['potentially_blocked']},
-     '"dummy" is not a valid number'),
-    ({"port": -300, "protocol": "tcp", 'start_time': '2022-07-17T12:58:33.528Z',
-      'end_time': "2022-07-18T12:58:33.529Z", 'policy_decisions': ['potentially_blocked']},
-     "{} is an invalid value for port. Value must be in 1 to 65535.".format(-300)),
-    ({"port": 8443, "protocol": "tcp", 'start_time': '2022-07-17T12:58:33.528Z',
-      'end_time': "2022-07-18T12:58:33.529Z", 'policy_decisions': ['dummy']},
-     "Invalid value for {}. Possible comma separated values are {}.".format('policy_decisions',
-                                                                            VALID_POLICY_DECISIONS)),
-    ({"port": 8443, "protocol": "dummy", 'start_time': '2022-07-17T12:58:33.528Z',
-      'end_time': "2022-07-18T12:58:33.529Z", 'policy_decisions': ['potentially_blocked']},
-     "{} is an invalid value for {}. Possible values are: {}.".format('dummy', 'protocol', VALID_PROTOCOLS))
-])
-def test_illumio_traffic_analysis_command_for_invalid_arguments(args, err_msg, mock_client):
+@pytest.mark.parametrize(
+    "args, err_msg, err_type",
+    [
+        (
+                {
+                    "port": "",
+                    "protocol": "tcp",
+                    "start_time": "2022-07-17T12:58:33.528Z",
+                    "end_time": "2022-07-18T12:58:33.529Z",
+                    "policy_decisions": ["potentially_blocked"],
+                },
+                MISSING_REQUIRED_PARAM_EXCEPTION_MESSAGE.format("port"),
+                ValueError,
+        ),
+        (
+                {
+                    "port": "dummy",
+                    "protocol": "tcp",
+                    "start_time": "2022-07-17T12:58:33.528Z",
+                    "end_time": "2022-07-18T12:58:33.529Z",
+                    "policy_decisions": ["potentially_blocked"],
+                },
+                '"dummy" is not a valid number',
+                ValueError,
+        ),
+        (
+                {
+                    "port": -300,
+                    "protocol": "tcp",
+                    "start_time": "2022-07-17T12:58:33.528Z",
+                    "end_time": "2022-07-18T12:58:33.529Z",
+                    "policy_decisions": ["potentially_blocked"],
+                },
+                INVALID_PORT_NUMBER_EXCEPTION_MESSAGE.format(-300),
+                InvalidValueError,
+        ),
+        (
+                {
+                    "port": 8443,
+                    "protocol": "tcp",
+                    "start_time": "2022-07-17T12:58:33.528Z",
+                    "end_time": "2022-07-18T12:58:33.529Z",
+                    "policy_decisions": ["dummy"],
+                },
+                "Invalid value for {}. Possible comma separated values are {}.".format(
+                    "policy_decisions", VALID_POLICY_DECISIONS
+                ),
+                InvalidValueError,
+        ),
+        (
+                {
+                    "port": 8443,
+                    "protocol": "dummy",
+                    "start_time": "2022-07-17T12:58:33.528Z",
+                    "end_time": "2022-07-18T12:58:33.529Z",
+                    "policy_decisions": ["potentially_blocked"],
+                },
+                "{} is an invalid value for {}. Possible values are: {}.".format("dummy", "protocol", VALID_PROTOCOLS),
+                InvalidValueError,
+        ),
+    ],
+)
+def test_traffic_analysis_command_for_invalid_arguments(args, err_msg, err_type, mock_client):
     """
-    Test case scenario for execution of illumio-traffic-analysis-command when invalid argument provided.
+    Test case scenario for execution of traffic-analysis-command when invalid argument provided.
 
     Given:
-        - command arguments for illumio_traffic_analysis_command
+        - command arguments for traffic_analysis_command
     When:
-        - Calling `illumio_traffic_analysis_command` function
+        - Calling `traffic_analysis_command` function
     Then:
         - Returns a valid error message
     """
-    from IllumioCore import illumio_traffic_analysis_command
-    with pytest.raises((ValueError, IllumioException, InvalidPortException, InvalidSingleSelectException,
-                        InvalidMultiSelectException)) as err:
-        illumio_traffic_analysis_command(mock_client, args)
-    assert str(err.value) == err_msg
+    from IllumioCore import traffic_analysis_command
+
+    with pytest.raises(err_type) as err:
+        traffic_analysis_command(mock_client, args)
+        assert str(err.value) == err_msg
 
 
-def test_illumio_traffic_analysis_success(requests_mock, mock_client):
+def test_traffic_analysis_success(requests_mock, mock_client):
     """
-    Test case scenario for successful execution of illumio_traffic_analysis_command function.
+    Test case scenario for successful execution of traffic-analysis-command function.
 
     Given:
-        - command arguments for illumio_traffic_analysis
+        - command arguments for traffic_analysis
     When:
-        - Calling `illumio_traffic_analysis_Command` function
+        - Calling `traffic_analysis_Command` function
     Then:
-        - Returns a valid output
+        - Returns a valid raw_response.
     """
-    from IllumioCore import illumio_traffic_analysis_command
+    args = {
+        "port": 8443,
+        "protocol": "tcp",
+        "policy_decisions": "potentially_blocked",
+        "start_time": "2022-07-17T12:58:33.528Z",
+        "end_time": "2022-07-18T12:58:33.529Z",
+    }
 
-    args = {'port': 8443, 'protocol': "tcp", 'policy_decisions': 'potentially_blocked',
-            'start_time': "2022-07-17T12:58:33.528Z", 'end_time': "2022-07-18T12:58:33.529Z"}
+    json_data = util_load_json(os.path.join(DIRECTORY_PATH, "test_data/traffic_analysis_success_response.json"))
 
-    json_data = util_load_json(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                            "test_data/traffic_analysis_success_response.json"))
+    json_data_get = util_load_json(os.path.join(DIRECTORY_PATH, "test_data/traffic_analysis_get_response.json"))
 
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                           "./test_data/traffic_analysis_success_hr.md")) as file:
-        hr_output = file.read()
+    json_download_data = util_load_json(os.path.join(DIRECTORY_PATH, "test_data/traffic_analysis_download_data.json"))
 
-    json_data_get = util_load_json(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                "test_data/traffic_analysis_get_response.json"))
-
-    json_download_data = util_load_json(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                     "test_data/traffic_analysis_download_data.json"))
-
-    requests_mock.post("https://127.0.0.1:8443/api/v2/orgs/1/traffic_flows/async_queries",
-                       json=json_data)
+    requests_mock.post("https://127.0.0.1:8443/api/v2/orgs/1/traffic_flows/async_queries", json=json_data)
 
     requests_mock.get(
         "https://127.0.0.1:8443/api/v2/orgs/1/traffic_flows/async_queries/a89cb6ff-980f-46bf-b715-e021ce55c0db",
-        json=json_data_get)
+        json=json_data_get,
+    )
 
     requests_mock.get(
         "https://127.0.0.1:8443/api/v2/orgs/1/traffic_flows/async_queries/d99b77b2-9ad4-4fe6-ac17-09ed634a47a4/download",
-        json=json_download_data)
+        json=json_download_data,
+    )
 
-    response = illumio_traffic_analysis_command(mock_client, args)
+    response = traffic_analysis_command(mock_client, args)
 
-    assert response.outputs_prefix == "Illumio.TrafficFlows"
     assert response.raw_response == json_download_data
-    assert response.outputs == json_download_data
-    assert response.outputs_key_field == 'href'
-    assert response.readable_output == hr_output
 
 
-def test_illumio_virtual_service_create_command_for_success_with_all_arguments(requests_mock, mock_client):
-    """Test case scenario for execution of illumio-virtual-service-create-command when valid and all arguments are provided.
+def test_traffic_analysis_human_readable():
+    """
+    Test case scenario for successful execution of traffic-analysis-command function.
 
     Given:
-        - illumio_virtual_service_create_command function and mock_client to call the function.
+        - command arguments for traffic_analysis
+    When:
+        - Calling `traffic_analysis_Command` function
+    Then:
+        - Returns a valid human-readable.
+    """
+
+    json_download_data = util_load_json(os.path.join(DIRECTORY_PATH, "test_data/traffic_analysis_download_data.json"))
+
+    with open(os.path.join(DIRECTORY_PATH, "./test_data/traffic_analysis_success_hr.md")) as file:
+        hr_output = file.read()
+
+    protocol = "tcp"
+
+    response = prepare_traffic_analysis_output(json_download_data, protocol)
+    assert response == hr_output
+
+
+def test_virtual_service_create_command_for_success(requests_mock, mock_client):
+    """Test case scenario for execution of virtual-service-create-command when valid and all arguments are provided.
+
+    Given:
+        - virtual_service_create_command function and mock_client to call the function.
     When:
         - Valid name, port, and protocol are provided in the command argument.
     Then:
-        - Should return proper human-readable string and context data.
+        - Should return proper raw_response.
     """
-    from IllumioCore import illumio_virtual_service_create_command
-
     create_virtual_service_expected_resp = util_load_json(
-        os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                     "test_data/create_virtual_service_success_response.json"))
+        os.path.join(DIRECTORY_PATH, "test_data/create_virtual_service_success_response.json")
+    )
 
     requests_mock.post(VIRTUAL_SERVICE_URL, json=create_virtual_service_expected_resp)
-    resp = illumio_virtual_service_create_command(mock_client, {"name": "test_create_virtual_service", "port": 3000,
-                                                                "protocol": "tcp"})
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                           "test_data/create_virtual_service_success_response_hr.md")) as f:
-        expected_hr_output = f.read()
-
-    assert resp.outputs == create_virtual_service_expected_resp
+    resp = virtual_service_create_command(
+        mock_client, {"name": "test_create_virtual_service", "port": 3000, "protocol": "tcp"})
     assert resp.raw_response == create_virtual_service_expected_resp
-    assert resp.readable_output == expected_hr_output
-    assert resp.outputs_prefix == "Illumio.VirtualService"
-    assert resp.outputs_key_field == "href"
 
 
-def test_illumio_virtual_service_create_command_for_success_with_only_required_arguments(requests_mock, mock_client):
-    """Test case scenario for execution of illumio-virtual-service-create-command with valid and only required arguments.
+def test_virtual_service_create_command_for_human_readable():
+    """Test case scenario for execution of virtual-service-create-command when valid and all arguments are provided.
 
     Given:
-        - illumio_virtual_service_create_command function and mock_client to call the function.
+        - virtual_service_create_command function and mock_client to call the function.
     When:
         - Valid name, port, and protocol are provided in the command argument.
     Then:
-        - Should return proper human-readable string and context data.
+        - Should return proper raw_response.
     """
-    from IllumioCore import illumio_virtual_service_create_command
-
     create_virtual_service_expected_resp = util_load_json(
-        os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                     "test_data/create_virtual_service_success_response.json", ))
-    requests_mock.post(VIRTUAL_SERVICE_URL, json=create_virtual_service_expected_resp)
-    resp = illumio_virtual_service_create_command(mock_client, {"name": "test_create_virtual_service", "port": "3000"})
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                           "test_data/create_virtual_service_success_response_hr.md")) as f:
+        os.path.join(DIRECTORY_PATH, "test_data/create_virtual_service_success_response.json")
+    )
+
+    with open(os.path.join(DIRECTORY_PATH, "test_data/create_virtual_service_success_response_hr.md")) as f:
         expected_hr_output = f.read()
 
-    assert resp.outputs == create_virtual_service_expected_resp
-    assert resp.raw_response == create_virtual_service_expected_resp
-    assert resp.readable_output == expected_hr_output
-    assert resp.outputs_prefix == "Illumio.VirtualService"
-    assert resp.outputs_key_field == "href"
+    response = prepare_virtual_service_output(create_virtual_service_expected_resp)
+    assert response == expected_hr_output
 
 
-def test_illumio_virtual_service_create_command_for_success_with_protocol_as_udp(requests_mock, mock_client):
-    """Test case scenario for execution of illumio-virtual-service-create-command with protocol as udp.
+def test_virtual_service_create_command_for_success_with_protocol_as_udp(requests_mock, mock_client):
+    """Test case scenario for execution of virtual-service-create-command with protocol as udp.
 
     Given:
-        - illumio_virtual_service_create_command function and mock_client to call the function.
+        - virtual_service_create_command function and mock_client to call the function.
     When:
         - Valid name, port, and protocol are provided in the command argument.
     Then:
-        - Should return proper human-readable string and context data.
+        - Should return raw_response.
     """
-    from IllumioCore import illumio_virtual_service_create_command
-
     create_virtual_service_expected_resp = util_load_json(
-        os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                     "test_data/create_virtual_service_success_response_protocol_as_udp.json"))
+        os.path.join(DIRECTORY_PATH, "test_data/create_virtual_service_success_response_protocol_as_udp.json")
+    )
     requests_mock.post(VIRTUAL_SERVICE_URL, json=create_virtual_service_expected_resp)
-    resp = illumio_virtual_service_create_command(mock_client, {"name": "test_create_virtual_service", "port": "3000"})
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                           "test_data/create_virtual_service_success_response_protocol_as_udp_hr.md")) as f:
-        expected_hr_output = f.read()
+    resp = virtual_service_create_command(mock_client, {"name": "test_create_virtual_service", "port": "3000"})
 
-    assert resp.outputs == create_virtual_service_expected_resp
     assert resp.raw_response == create_virtual_service_expected_resp
-    assert resp.readable_output == expected_hr_output
-    assert resp.outputs_prefix == "Illumio.VirtualService"
-    assert resp.outputs_key_field == "href"
 
 
-def test_illumio_virtual_service_create_command_for_existing_virtual_service(requests_mock, mock_client, capfd):
-    """Test case scenario for illumio-virtual-service-create-command with existing virtual service.
+def test_virtual_service_create_command_for_human_readable_with_protocol_as_udp():
+    """Test case scenario for execution of virtual-service-create-command with protocol as udp.
 
     Given:
-        - illumio_virtual_service_create_command function and mock_client to call the function.
+        - virtual_service_create_command function and mock_client to call the function.
+    When:
+        - Valid name, port, and protocol are provided in the command argument.
+    Then:
+        - Should return proper human-readable string.
+    """
+    create_virtual_service_expected_resp = util_load_json(
+        os.path.join(DIRECTORY_PATH, "test_data/create_virtual_service_success_response_protocol_as_udp.json")
+    )
+
+    with open(
+            os.path.join(DIRECTORY_PATH, "test_data/create_virtual_service_success_response_protocol_as_udp_hr.md")
+    ) as f:
+        expected_hr_output = f.read()
+
+    response = prepare_virtual_service_output(create_virtual_service_expected_resp)
+    assert response == expected_hr_output
+
+
+def test_virtual_service_create_command_for_existing_virtual_service(requests_mock, mock_client):
+    """Test case scenario for virtual-service-create-command with existing virtual service.
+
+    Given:
+        - virtual_service_create_command function and mock_client to call the function.
     When:
         - Virtual service already exists.
     Then:
         - Should raise exception with proper error message.
     """
-    from IllumioCore import illumio_virtual_service_create_command
-
-    requests_mock.post(VIRTUAL_SERVICE_URL, status_code=406,
-                       json=[{"token": "name_must_be_unique", "message": "Name must be unique"}])
+    requests_mock.post(
+        VIRTUAL_SERVICE_URL, status_code=406, json=[{"token": "name_must_be_unique", "message": "Name must be unique"}]
+    )
     with pytest.raises(Exception) as error:
-        capfd.close()
-        illumio_virtual_service_create_command(mock_client,
-                                               {"name": "test_virtual_service", "port": 3000, "protocol": "tcp"})
-
-    assert str(error.value) == "406 Client Error: None for url: {}".format(VIRTUAL_SERVICE_URL)
+        virtual_service_create_command(mock_client, {"name": "test_virtual_service", "port": 3000, "protocol": "tcp"})
+        assert str(error.value) == "406 Client Error: None for url: {}".format(VIRTUAL_SERVICE_URL)
 
 
 @pytest.mark.parametrize(
-    "err_msg, args",
-    [(NOT_VALID_NUMBER_EXCEPTION_MESSAGE.format("port", "300i0"), {"name": "test", "port": "300i0", "protocol": "tcp"}),
-     (CONVERT_PROTOCOL_EXCEPTION_MESSAGE.format("tcpi"), {"name": "test", "port": "30000", "protocol": "tcpi"}),
-     (MISSING_REQUIRED_PARAM_EXCEPTION_MESSAGE.format("name"), {}),
-     (INVALID_PORT_NUMBER_CREATE_VIRTUAL_SERVICE_EXCEPTION_MESSAGE.format(65536), {"name": "test", "port": "65536"}),
-     (INVALID_PORT_NUMBER_CREATE_VIRTUAL_SERVICE_EXCEPTION_MESSAGE.format(0), {"name": "test", "port": "0"}),
-     (MISSING_REQUIRED_PARAM_EXCEPTION_MESSAGE.format("port"), {"name": "test"})]
+    "err_msg, args, err_type",
+    [
+        (NOT_VALID_NUMBER_EXCEPTION_MESSAGE.format("port", "300i0"),
+         {"name": "test", "port": "300i0", "protocol": "tcp"}, ValueError),
+        (CONVERT_PROTOCOL_EXCEPTION_MESSAGE.format("tcpi"), {"name": "test", "port": "30000", "protocol": "tcpi"},
+         InvalidValueError),
+        (MISSING_REQUIRED_PARAM_EXCEPTION_MESSAGE.format("name"), {}, ValueError),
+        (INVALID_PORT_NUMBER_CREATE_VIRTUAL_SERVICE_EXCEPTION_MESSAGE.format(65536), {"name": "test", "port": "65536"},
+         InvalidValueError),
+        (INVALID_PORT_NUMBER_CREATE_VIRTUAL_SERVICE_EXCEPTION_MESSAGE.format(0), {"name": "test", "port": "0"},
+         InvalidValueError),
+        (MISSING_REQUIRED_PARAM_EXCEPTION_MESSAGE.format("port"), {"name": "test"}, ValueError),
+    ],
 )
-def test_illumio_virtual_service_create_command_when_invalid_arguments_provided(err_msg, args, mock_client, capfd):
-    """Test case scenario for execution of illumio-virtual-service-create-command when invalid argument provided.
+def test_virtual_service_create_command_when_invalid_arguments_provided(err_msg, args, err_type, mock_client):
+    """Test case scenario for execution of virtual-service-create-command when invalid argument provided.
 
     Given:
-        - command arguments for illumio-virtual-service-create-command.
+        - command arguments for virtual-service-create-command.
     When:
-        - Calling `illumio_virtual_service_create_command` function.
+        - Calling `virtual_service_create_command` function.
     Then:
         - Returns a valid error message.
     """
-    from IllumioCore import illumio_virtual_service_create_command
-
-    with pytest.raises((ValueError, InvalidSingleSelectException)) as err:
-        capfd.close()
-        illumio_virtual_service_create_command(mock_client, args)
-
-    assert str(err.value) == err_msg
+    with pytest.raises(err_type) as err:
+        virtual_service_create_command(mock_client, args)
+        assert str(err.value) == err_msg
