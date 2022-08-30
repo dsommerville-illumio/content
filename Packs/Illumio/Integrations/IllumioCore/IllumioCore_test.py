@@ -2,15 +2,16 @@
 
 import io
 
+import illumio.pce
 import pytest
 
 from CommonServerPython import *  # noqa
 from IllumioCore import *
+from test_data.test_data_responses import *
 
 """ CONSTANTS """
 
-DIRECTORY_PATH = os.path.dirname(os.path.realpath(__file__))
-VIRTUAL_SERVICE_URL = "https://127.0.0.1:8443/api/v2/orgs/1/sec_policy/draft/virtual_services"
+DIRECTORY_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "test_data")
 INVALID_PORT_NUMBER_CREATE_VIRTUAL_SERVICE_EXCEPTION_MESSAGE = (
     "{} is an invalid value for port. Value must be in 1 to 65535 or -1.")
 INVALID_PORT_NUMBER_EXCEPTION_MESSAGE = "{} is an invalid value for port. Value must be in 1 to 65535."
@@ -39,6 +40,52 @@ def util_load_json(path):
         return json.loads(f.read())
 
 
+@pytest.fixture(scope="module")
+def traffic_analysis_create_success():
+    """Retrieve the json response for traffic analysis."""
+    return util_load_json(os.path.join(DIRECTORY_PATH, "traffic_analysis_download_data.json"))
+
+
+@pytest.fixture(scope="module")
+def traffic_analysis_create_success_hr():
+    """Retrieve the human-readable for traffic analysis."""
+    with open(os.path.join(DIRECTORY_PATH, "traffic_analysis_success_hr.md")) as file:
+        hr_output = file.read()
+    return hr_output
+
+
+@pytest.fixture(scope="module")
+def virtual_service_create_success():
+    """Retrieve the json response for virtual service."""
+    return util_load_json(os.path.join(DIRECTORY_PATH, "create_virtual_service_success_response.json"))
+
+
+@pytest.fixture(scope="module")
+def virtual_service_create_success_udp():
+    """Retrieve the json response for virtual service for UDP protocol."""
+    return util_load_json(
+        os.path.join(DIRECTORY_PATH, "create_virtual_service_success_response_protocol_as_udp.json")
+    )
+
+
+@pytest.fixture(scope="module")
+def virtual_service_success_hr():
+    """Retrieve the human-readable response for virtual service."""
+    with open(os.path.join(DIRECTORY_PATH, "create_virtual_service_success_response_hr.md")) as f:
+        expected_hr_output = f.read()
+    return expected_hr_output
+
+
+@pytest.fixture(scope="module")
+def virtual_service_success_udp_hr():
+    """Retrieve the human-readable response for virtual service for UDP protocol."""
+    with open(
+            os.path.join(DIRECTORY_PATH, "create_virtual_service_success_response_protocol_as_udp_hr.md")
+    ) as f:
+        expected_hr_output = f.read()
+    return expected_hr_output
+
+
 def test_test_module(requests_mock, mock_client):
     """
     Test case scenario for successful execution of test_module.
@@ -50,8 +97,7 @@ def test_test_module(requests_mock, mock_client):
     Then:
        - Returns an ok message.
     """
-    from IllumioCore import test_module
-    requests_mock.get("https://127.0.0.1:8443/api/v2/health",
+    requests_mock.get(re.compile("/health"),
                       status_code=200, json={})
     assert test_module(mock_client) == "ok"
 
@@ -136,7 +182,7 @@ def test_traffic_analysis_command_for_invalid_arguments(args, err_msg, err_type,
         assert str(err.value) == err_msg
 
 
-def test_traffic_analysis_success(requests_mock, mock_client):
+def test_traffic_analysis_success(mock_client, monkeypatch, traffic_analysis_create_success):
     """
     Test case scenario for successful execution of traffic-analysis-command function.
 
@@ -155,30 +201,15 @@ def test_traffic_analysis_success(requests_mock, mock_client):
         "end_time": "2022-07-18T12:58:33.529Z",
     }
 
-    json_data = util_load_json(os.path.join(DIRECTORY_PATH, "test_data/traffic_analysis_success_response.json"))
+    monkeypatch.setattr(illumio.pce.PolicyComputeEngine, "get_traffic_flows_async",
+                        lambda *a, **k: TRAFFIC_ANALYSIS_RESPONSE)
 
-    json_data_get = util_load_json(os.path.join(DIRECTORY_PATH, "test_data/traffic_analysis_get_response.json"))
+    resp = traffic_analysis_command(mock_client, args)
 
-    json_download_data = util_load_json(os.path.join(DIRECTORY_PATH, "test_data/traffic_analysis_download_data.json"))
-
-    requests_mock.post("https://127.0.0.1:8443/api/v2/orgs/1/traffic_flows/async_queries", json=json_data)
-
-    requests_mock.get(
-        "https://127.0.0.1:8443/api/v2/orgs/1/traffic_flows/async_queries/a89cb6ff-980f-46bf-b715-e021ce55c0db",
-        json=json_data_get,
-    )
-
-    requests_mock.get(
-        "https://127.0.0.1:8443/api/v2/orgs/1/traffic_flows/async_queries/d99b77b2-9ad4-4fe6-ac17-09ed634a47a4/download",
-        json=json_download_data,
-    )
-
-    response = traffic_analysis_command(mock_client, args)
-
-    assert response.raw_response == json_download_data
+    assert resp.raw_response == traffic_analysis_create_success
 
 
-def test_traffic_analysis_human_readable():
+def test_traffic_analysis_human_readable(traffic_analysis_create_success, traffic_analysis_create_success_hr):
     """
     Test case scenario for successful execution of traffic-analysis-command function.
 
@@ -189,19 +220,12 @@ def test_traffic_analysis_human_readable():
     Then:
         - Returns a valid human-readable.
     """
-
-    json_download_data = util_load_json(os.path.join(DIRECTORY_PATH, "test_data/traffic_analysis_download_data.json"))
-
-    with open(os.path.join(DIRECTORY_PATH, "./test_data/traffic_analysis_success_hr.md")) as file:
-        hr_output = file.read()
-
-    protocol = "tcp"
-
-    response = prepare_traffic_analysis_output(json_download_data, protocol)
-    assert response == hr_output
+    resp = prepare_traffic_analysis_output(traffic_analysis_create_success)
+    assert resp == traffic_analysis_create_success_hr
 
 
-def test_virtual_service_create_command_for_success(requests_mock, mock_client):
+def test_virtual_service_create_command_for_success(mock_client, virtual_service_create_success,
+                                                    monkeypatch):
     """Test case scenario for execution of virtual-service-create-command when valid and all arguments are provided.
 
     Given:
@@ -211,17 +235,15 @@ def test_virtual_service_create_command_for_success(requests_mock, mock_client):
     Then:
         - Should return proper raw_response.
     """
-    create_virtual_service_expected_resp = util_load_json(
-        os.path.join(DIRECTORY_PATH, "test_data/create_virtual_service_success_response.json")
-    )
-
-    requests_mock.post(VIRTUAL_SERVICE_URL, json=create_virtual_service_expected_resp)
+    from test_data.test_data_responses import VIRTUAL_SERVICE_SUCCESS
+    monkeypatch.setattr(illumio.pce.PolicyComputeEngine._PCEObjectAPI, "create",
+                        lambda *a: VIRTUAL_SERVICE_SUCCESS)
     resp = virtual_service_create_command(
         mock_client, {"name": "test_create_virtual_service", "port": 3000, "protocol": "tcp"})
-    assert resp.raw_response == create_virtual_service_expected_resp
+    assert resp.raw_response == virtual_service_create_success
 
 
-def test_virtual_service_create_command_for_human_readable():
+def test_virtual_service_create_command_for_human_readable(virtual_service_create_success, virtual_service_success_hr):
     """Test case scenario for execution of virtual-service-create-command when valid and all arguments are provided.
 
     Given:
@@ -231,18 +253,13 @@ def test_virtual_service_create_command_for_human_readable():
     Then:
         - Should return proper raw_response.
     """
-    create_virtual_service_expected_resp = util_load_json(
-        os.path.join(DIRECTORY_PATH, "test_data/create_virtual_service_success_response.json")
-    )
-
-    with open(os.path.join(DIRECTORY_PATH, "test_data/create_virtual_service_success_response_hr.md")) as f:
-        expected_hr_output = f.read()
-
-    response = prepare_virtual_service_output(create_virtual_service_expected_resp)
-    assert response == expected_hr_output
+    resp = prepare_virtual_service_output(virtual_service_create_success)
+    assert resp == virtual_service_success_hr
 
 
-def test_virtual_service_create_command_for_success_with_protocol_as_udp(requests_mock, mock_client):
+def test_virtual_service_create_command_for_success_with_protocol_as_udp(mock_client,
+                                                                         virtual_service_create_success_udp,
+                                                                         monkeypatch):
     """Test case scenario for execution of virtual-service-create-command with protocol as udp.
 
     Given:
@@ -252,16 +269,15 @@ def test_virtual_service_create_command_for_success_with_protocol_as_udp(request
     Then:
         - Should return raw_response.
     """
-    create_virtual_service_expected_resp = util_load_json(
-        os.path.join(DIRECTORY_PATH, "test_data/create_virtual_service_success_response_protocol_as_udp.json")
-    )
-    requests_mock.post(VIRTUAL_SERVICE_URL, json=create_virtual_service_expected_resp)
+    monkeypatch.setattr(illumio.pce.PolicyComputeEngine._PCEObjectAPI, "create",
+                        lambda *a: VIRTUAL_SERVICE_SUCCESS)
     resp = virtual_service_create_command(mock_client, {"name": "test_create_virtual_service", "port": "3000"})
 
-    assert resp.raw_response == create_virtual_service_expected_resp
+    assert resp.raw_response == virtual_service_create_success_udp
 
 
-def test_virtual_service_create_command_for_human_readable_with_protocol_as_udp():
+def test_virtual_service_create_command_for_human_readable_with_protocol_as_udp(virtual_service_create_success_udp,
+                                                                                virtual_service_success_udp_hr):
     """Test case scenario for execution of virtual-service-create-command with protocol as udp.
 
     Given:
@@ -271,20 +287,11 @@ def test_virtual_service_create_command_for_human_readable_with_protocol_as_udp(
     Then:
         - Should return proper human-readable string.
     """
-    create_virtual_service_expected_resp = util_load_json(
-        os.path.join(DIRECTORY_PATH, "test_data/create_virtual_service_success_response_protocol_as_udp.json")
-    )
-
-    with open(
-            os.path.join(DIRECTORY_PATH, "test_data/create_virtual_service_success_response_protocol_as_udp_hr.md")
-    ) as f:
-        expected_hr_output = f.read()
-
-    response = prepare_virtual_service_output(create_virtual_service_expected_resp)
-    assert response == expected_hr_output
+    resp = prepare_virtual_service_output(virtual_service_create_success_udp)
+    assert resp == virtual_service_success_udp_hr
 
 
-def test_virtual_service_create_command_for_existing_virtual_service(requests_mock, mock_client):
+def test_virtual_service_create_command_for_existing_virtual_service(requests_mock, mock_client, monkeypatch):
     """Test case scenario for virtual-service-create-command with existing virtual service.
 
     Given:
@@ -295,11 +302,13 @@ def test_virtual_service_create_command_for_existing_virtual_service(requests_mo
         - Should raise exception with proper error message.
     """
     requests_mock.post(
-        VIRTUAL_SERVICE_URL, status_code=406, json=[{"token": "name_must_be_unique", "message": "Name must be unique"}]
+        re.compile("/sec_policy/draft/virtual_services"), status_code=406,
+        json=[{"token": "name_must_be_unique", "message": "Name must be unique"}]
     )
     with pytest.raises(Exception) as error:
         virtual_service_create_command(mock_client, {"name": "test_virtual_service", "port": 3000, "protocol": "tcp"})
-        assert str(error.value) == "406 Client Error: None for url: {}".format(VIRTUAL_SERVICE_URL)
+    assert str(error.value) == "406 Client Error: None for url: {}".format(
+        "https://127.0.0.1:8443/api/v2/orgs/1/sec_policy/draft/virtual_services")
 
 
 @pytest.mark.parametrize(

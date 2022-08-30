@@ -1,10 +1,11 @@
 """Implementation file for IllumioCore Integration."""
+from enum import Enum
 
 import urllib3
-from illumio import PolicyComputeEngine, ServicePort, convert_protocol
+from illumio import PolicyComputeEngine
 from illumio.explorer import TrafficQuery
-from illumio.policyobjects import *
-
+from illumio.policyobjects import VirtualService, ServicePort
+from illumio.util import convert_protocol
 import demistomock as demisto
 from CommonServerPython import *  # noqa # pylint: disable=unused-wildcard-import
 from CommonServerUserPython import *  # noqa
@@ -19,20 +20,27 @@ HR_DATE_FORMAT = "%d %b %Y, %I:%M %p"
 VALID_PROTOCOLS = ["tcp", "udp"]
 VALID_POLICY_DECISIONS = ["potentially_blocked", "blocked", "unknown", "allowed"]
 
+
+class Protocol(Enum):
+    """Enum for protocols."""
+    TCP = 6
+    UDP = 17
+
+
 """EXCEPTION CLASS"""
 
 
 class InvalidValueError(Exception):
     """Custom exception class for invalid values."""
-    def __init__(self, arg_name, arg_value, arg_list=[], message=""):
+    def __init__(self, arg_name="", arg_value="", arg_list=[], message=""):
         if message:
-            self.message = message.format(arg_value, arg_name)
+            self.message = message
+            super().__init__(self.message)
         else:
             self.message = "{} is an invalid value for {}. Possible values are: {}.".format(
                 arg_value, arg_name, arg_list
             )
-
-        super().__init__(self.message)
+            super().__init__(self.message)
 
 
 """ HELPER FUNCTIONS """
@@ -47,7 +55,7 @@ def validate_traffic_analysis_arguments(port: Optional[int], policy_decisions: l
         protocol: Communication protocol.
     """
     if port < MIN_PORT or port > MAX_PORT:  # type: ignore
-        raise InvalidValueError("port", port, message="{} invalid value for {}. Value must be in 1 to 65535.")
+        raise InvalidValueError(message="{} invalid value for port. Value must be in 1 to 65535.".format(port))
 
     for decision in policy_decisions:
         if decision not in VALID_POLICY_DECISIONS:
@@ -66,43 +74,42 @@ def validate_virtual_service_arguments(port: int | None, protocol: str) -> None:
     """
     if port != -1 and (port > MAX_PORT or port < MIN_PORT or port == 0):  # type: ignore
         raise InvalidValueError(
-            "port", port, message="{} is an invalid value for {}. Value must be in 1 to 65535 or -1."
-        )
+            message="{} is an invalid value for port. Value must be in 1 to 65535 or -1.".format(port))
 
     if protocol not in VALID_PROTOCOLS:
         raise InvalidValueError("protocol", protocol, VALID_PROTOCOLS)
 
 
-def prepare_traffic_analysis_output(response: list, protocol: str) -> str:
-    """Prepare human-readable output for traffic-analysis command.
+def prepare_traffic_analysis_output(response: list) -> str:
+    """Prepare Human Readable output for traffic-analysis-command.
 
     Args:
         response: Response from the SDK.
-        protocol: Communication protool.
 
     Returns:
         markdown string to be displayed in the war room.
     """
     hr_output = []
-    for traffic in response:
-        hr_output.append(
-            {
-                "Source IP": traffic.get("src", {}).get("ip"),
-                "Destination IP": traffic.get("dst", {}).get("ip"),
-                "Destination Workload Hostname": traffic.get("dst", {}).get("workload", {}).get("hostname"),
-                "Service Port": traffic.get("service", {}).get("port"),
-                "Service Protocol": protocol,
-                "Policy Decision": traffic.get("policy_decision"),
-                "State": traffic.get("state"),
-                "Flow Direction": traffic.get("flow_direction"),
-                "First Detected": arg_to_datetime(
-                    traffic["timestamp_range"]["first_detected"]).strftime(HR_DATE_FORMAT),  # type: ignore
-                "Last Detected": arg_to_datetime(
-                    traffic["timestamp_range"]["last_detected"]).strftime(HR_DATE_FORMAT),  # type: ignore
-            }
-        )
 
-    headers = list(hr_output[0].keys())
+    for traffic in response:
+        d = OrderedDict()
+        d["Source IP"] = traffic.get("src", {}).get("ip")
+        d["Destination IP"] = traffic.get("dst", {}).get("ip")
+        d["Destination Workload Hostname"] = traffic.get("dst", {}).get("workload", {}).get("hostname")
+        d["Service Port"] = traffic.get("service", {}).get("port")
+        d["Service Protocol"] = Protocol(traffic.get("service").get("proto")).name
+        d["Policy Decision"] = traffic.get("policy_decision")
+        d["State"] = traffic.get("state")
+        d["Flow Direction"] = traffic.get("flow_direction")
+        d["First Detected"] = arg_to_datetime(
+            traffic["timestamp_range"]["first_detected"]).strftime(HR_DATE_FORMAT)  # type: ignore
+        d["Last Detected"] = arg_to_datetime(
+            traffic["timestamp_range"]["last_detected"]).strftime(HR_DATE_FORMAT)  # type: ignore
+
+        hr_output.append(d)
+
+    headers = list(hr_output[0].keys()) if hr_output else []
+
     return tableToMarkdown("Traffic Analysis:", hr_output, headers=headers, removeNull=True)
 
 
@@ -115,24 +122,24 @@ def prepare_virtual_service_output(response: dict) -> str:
     Returns:
         markdown string to be displayed in the war room.
     """
-    table = {6: "tcp", 17: "udp"}
-    hr_outputs = []
+    hr_output = []
     for service_port in response.get("service_ports", []):
-        hr_outputs.append(
-            {
+
+        hr_output.append(
+            OrderedDict({
                 "Virtual Service HREF": response.get("href"),
                 "Created At": arg_to_datetime(response["created_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
                 "Updated At": arg_to_datetime(response["updated_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
                 "Name": response.get("name"),
                 "Description": response.get("description"),
                 "Service Port": service_port.get("port") if "port" in service_port else "all ports have been selected",
-                "Service Protocol": table.get(service_port.get("proto")),
-            }
+                "Service Protocol": Protocol(service_port.get("proto")).name,
+            })
         )
 
-    headers = list(hr_outputs[0].keys())
+    headers = list(hr_output[0].keys()) if hr_output else []
     title = f'Virtual Service:\n#### Successfully created virtual service: {response.get("href")}\n'
-    return tableToMarkdown(title, hr_outputs, headers=headers, removeNull=True)
+    return tableToMarkdown(title, hr_output, headers=headers, removeNull=True)
 
 
 def validate_required_parameters(**kwargs) -> None:
@@ -217,7 +224,7 @@ def traffic_analysis_command(client: PolicyComputeEngine, args: Dict[str, Any]) 
         resp = resp.to_json()
         json_response.append(resp)
 
-    readable_output = prepare_traffic_analysis_output(json_response, protocol)
+    readable_output = prepare_traffic_analysis_output(json_response)
     return CommandResults(
         outputs_prefix="Illumio.TrafficFlows",
         outputs_key_field="href",
@@ -247,8 +254,6 @@ def virtual_service_create_command(client: PolicyComputeEngine, args: Dict[str, 
 
     service = VirtualService(name=name, service_ports=[ServicePort(port=port, proto=proto)])  # type: ignore
     virtual_service = client.virtual_services.create(service)  # type: ignore
-
-    demisto.info("Created virtual service with HREF '{}'".format(virtual_service.href))
     virtual_service_json = virtual_service.to_json()
     hr_output = prepare_virtual_service_output(virtual_service_json)
     return CommandResults(
@@ -270,11 +275,12 @@ def main():
         api_user = params.get("api_user")
         api_key = params.get("api_key")
 
-        port = arg_to_number(params.get("port"))
+        port = arg_to_number(params.get("port"), required=True, arg_name="port")
         if port < MIN_PORT or port > MAX_PORT:  # type: ignore
-            raise InvalidValueError("port", port, message="{} invalid value for {}. Value must be in 1 to 65535.")
+            raise InvalidValueError(
+                message="{} is an invalid value for port. Value must be in 1 to 65535.".format(port))
 
-        org_id = arg_to_number(params.get("org_id"), required=True)
+        org_id = arg_to_number(params.get("org_id"), required=True, arg_name="org_id")
         if org_id <= 0:  # type: ignore
             raise ValueError(
                 "{} is an invalid value. Organization ID must be a non-zero and positive numeric value.".format(org_id)
