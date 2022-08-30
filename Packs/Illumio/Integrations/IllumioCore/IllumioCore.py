@@ -33,14 +33,11 @@ class Protocol(Enum):
 class InvalidValueError(Exception):
     """Custom exception class for invalid values."""
     def __init__(self, arg_name="", arg_value="", arg_list=[], message=""):
-        if message:
-            self.message = message
-            super().__init__(self.message)
-        else:
-            self.message = "{} is an invalid value for {}. Possible values are: {}.".format(
+        if not message:
+            message = "{} is an invalid value for {}. Possible values are: {}".format(
                 arg_value, arg_name, arg_list
             )
-            super().__init__(self.message)
+        super().__init__(message)
 
 
 """ HELPER FUNCTIONS """
@@ -92,21 +89,21 @@ def prepare_traffic_analysis_output(response: list) -> str:
     hr_output = []
 
     for traffic in response:
-        d = OrderedDict()
-        d["Source IP"] = traffic.get("src", {}).get("ip")
-        d["Destination IP"] = traffic.get("dst", {}).get("ip")
-        d["Destination Workload Hostname"] = traffic.get("dst", {}).get("workload", {}).get("hostname")
-        d["Service Port"] = traffic.get("service", {}).get("port")
-        d["Service Protocol"] = Protocol(traffic.get("service").get("proto")).name
-        d["Policy Decision"] = traffic.get("policy_decision")
-        d["State"] = traffic.get("state")
-        d["Flow Direction"] = traffic.get("flow_direction")
-        d["First Detected"] = arg_to_datetime(
-            traffic["timestamp_range"]["first_detected"]).strftime(HR_DATE_FORMAT)  # type: ignore
-        d["Last Detected"] = arg_to_datetime(
-            traffic["timestamp_range"]["last_detected"]).strftime(HR_DATE_FORMAT)  # type: ignore
+        hr_output.append({
+                "Source IP": traffic.get("src", {}).get("ip"),
+                "Destination IP": traffic.get("dst", {}).get("ip"),
+                "Destination Workload Hostname": traffic.get("dst", {}).get("workload", {}).get("hostname"),
+                "Service Port": traffic.get("service", {}).get("port"),
+                "Service Protocol": Protocol(traffic.get("service").get("proto")).name,
+                "Policy Decision": traffic.get("policy_decision"),
+                "State": traffic.get("state"),
+                "Flow Direction": traffic.get("flow_direction"),
+                "First Detected": arg_to_datetime(
+                    traffic["timestamp_range"]["first_detected"]).strftime(HR_DATE_FORMAT),  # type: ignore
+                "Last Detected": arg_to_datetime(
+                    traffic["timestamp_range"]["last_detected"]).strftime(HR_DATE_FORMAT)  # type: ignore
 
-        hr_output.append(d)
+            })
 
     headers = list(hr_output[0].keys()) if hr_output else []
 
@@ -124,9 +121,7 @@ def prepare_virtual_service_output(response: dict) -> str:
     """
     hr_output = []
     for service_port in response.get("service_ports", []):
-
-        hr_output.append(
-            OrderedDict({
+        hr_output.append({
                 "Virtual Service HREF": response.get("href"),
                 "Created At": arg_to_datetime(response["created_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
                 "Updated At": arg_to_datetime(response["updated_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
@@ -135,7 +130,6 @@ def prepare_virtual_service_output(response: dict) -> str:
                 "Service Port": service_port.get("port") if "port" in service_port else "all ports have been selected",
                 "Service Protocol": Protocol(service_port.get("proto")).name,
             })
-        )
 
     headers = list(hr_output[0].keys()) if hr_output else []
     title = f'Virtual Service:\n#### Successfully created virtual service: {response.get("href")}\n'
@@ -313,4 +307,3 @@ def main():
 
 if __name__ in ("__main__", "__builtin__", "builtins"):  # pragma: no cover
     main()
-
