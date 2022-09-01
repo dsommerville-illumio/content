@@ -264,7 +264,7 @@ script:
   - arguments:
     - default: false
       description: Workload HREFs to bind. Supports comma-separated values.
-      isArray: false
+      isArray: true
       name: workloads
       required: true
       secret: false
