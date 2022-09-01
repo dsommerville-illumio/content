@@ -2,9 +2,9 @@
 from enum import Enum
 
 import urllib3
-from illumio import PolicyComputeEngine
+from illumio import PolicyComputeEngine, IllumioEncoder, convert_draft_href_to_active
 from illumio.explorer import TrafficQuery
-from illumio.policyobjects import VirtualService, ServicePort
+from illumio.policyobjects import VirtualService, ServicePort, ServiceBinding, Reference
 from illumio.util import convert_protocol
 import demistomock as demisto
 from CommonServerPython import *  # noqa # pylint: disable=unused-wildcard-import
@@ -19,6 +19,8 @@ MAX_PORT = 65535
 HR_DATE_FORMAT = "%d %b %Y, %I:%M %p"
 VALID_PROTOCOLS = ["tcp", "udp"]
 VALID_POLICY_DECISIONS = ["potentially_blocked", "blocked", "unknown", "allowed"]
+SUPPORTED_ENFORCEMENT_MODES = ["visibility_only", "full", "idle", "selective"]
+SUPPORTED_VISIBILITY_LEVEL = ["flow_full_detail", "flow_summary", "flow_drops", "flow_off", "enhanced_data_collection"]
 
 
 class Protocol(Enum):
@@ -41,6 +43,54 @@ class InvalidValueError(Exception):
 
 
 """ HELPER FUNCTIONS """
+
+
+def validate_required_parameters(**kwargs) -> None:
+    """Raise an error for a required parameter.
+
+    Enter your required parameters as keyword arguments to check
+    whether they hold a value or not.
+
+    Args:
+        **kwargs: keyword arguments to check the required values for.
+
+    Returns:
+        Error if the value of the parameter is "", [], (), {}, None.
+    """
+    for key, value in kwargs.items():
+        if not value:
+            raise ValueError("{} is a required parameter. Please provide correct value.".format(key))
+
+
+def trim_spaces_from_args(args: Dict) -> Dict:
+    """Trim spaces from values of the args dict.
+
+    Args:
+        args: Dict to trim spaces from.
+
+    Returns: Arguments after trim spaces.
+    """
+    for key, val in args.items():
+        if isinstance(val, str):
+            args[key] = val.strip()
+
+    return args
+
+
+def generate_change_description_for_object_provision(hrefs: List[str]) -> str:
+    """
+    Generate a unique message for object provision command's change description argument.
+
+    Args:
+        hrefs: List of HREFs to be provisioned.
+
+    Returns:
+        str: A string with the current time in UTC.
+    """
+    from datetime import datetime
+
+    return f"XSOAR - {datetime.now().astimezone(timezone.utc).isoformat()[:-6]}\nProvisioning following objects:" \
+           f"\n{', '.join(hrefs)}"
 
 
 def validate_traffic_analysis_arguments(port: Optional[int], policy_decisions: list, protocol: str) -> None:
@@ -136,36 +186,57 @@ def prepare_virtual_service_output(response: dict) -> str:
     return tableToMarkdown(title, hr_output, headers=headers, removeNull=True)
 
 
-def validate_required_parameters(**kwargs) -> None:
-    """Raise an error for a required parameter.
-
-    Enter your required parameters as keyword arguments to check
-    whether they hold a value or not.
+def prepare_service_binding_output(response: dict) -> str:
+    """Prepare human-readable output for service-binding-create command.
 
     Args:
-        **kwargs: keyword arguments to check the required values for.
+        response: result returned after create service binding.
 
     Returns:
-        Error if the value of the parameter is "", [], (), {}, None.
+        markdown string to be displayed in the war room.
     """
-    for key, value in kwargs.items():
-        if not value:
-            raise ValueError("{} is a required parameter. Please provide correct value.".format(key))
+    hr_outputs = []
+
+    if response.get("errors"):
+        title = "Service Binding:\n#### Workloads have been already binded to the virtual service."
+        hr_outputs.append(
+            {"Status": response.get("errors", {"status": "uniqueness_failure"})[0].get("status")}
+        )
+        return tableToMarkdown(title, hr_outputs, headers=["Status"], removeNull=True)
+    else:
+        title = "Service Binding:\n#### Workloads have been binded to the virtual service successfully."
+        for result in response.get("service_bindings", []):
+            hr_outputs.append(OrderedDict({"Service Binding HREF": result["href"], "Status": "created"}))
+
+        headers = list(hr_outputs[0].keys()) if hr_outputs else []
+        return tableToMarkdown(title, hr_outputs, headers=headers, removeNull=True)
 
 
-def trim_spaces_from_args(args: Dict) -> Dict:
-    """Trim spaces from values of the args dict.
+def prepare_object_provision_output(response: Dict[str, Any]) -> str:
+    """
+    Prepare human-readable output for objects-provision command.
 
     Args:
-        args: Dict to trim spaces from.
+        response: Response received from the SDK.
 
-    Returns: Arguments after trim spaces.
+    Returns:
+        str: Human-readable markdown string.
     """
-    for key, val in args.items():
-        if isinstance(val, str):
-            args[key] = val.strip()
+    created_at = response.get('created_at')
+    if created_at:
+        created_at = arg_to_datetime(created_at).strftime(HR_DATE_FORMAT)  # type: ignore
 
-    return args
+    hr_output = {
+        "Provision Object URI": response.get("href"),
+        "Commit Message": response.get("commit_message"),
+        "Created At": created_at
+    }
+
+    return tableToMarkdown("Provision Objects:",
+                           hr_output,
+                           headers=["Provision Object URI", "Commit Message", "Created At"],
+                           metadata=f"Provision is completed for {response.get('href')}",
+                           removeNull=True)
 
 
 """ COMMAND FUNCTIONS """
@@ -259,6 +330,72 @@ def virtual_service_create_command(client: PolicyComputeEngine, args: Dict[str, 
     )
 
 
+def service_binding_create_command(client: PolicyComputeEngine, args: dict[str, Any]) -> CommandResults:
+    """Create a service binding.
+
+    Args:
+        client: PolicyComputeEngine to use.
+        args: arguments obtained from demisto.args()
+
+    Returns:
+        CommandResult object
+    """
+    workloads = args.get("workloads")
+    virtual_service = args.get("virtual_service")
+
+    validate_required_parameters(workloads=workloads, virtual_service=virtual_service)
+    workloads = argToList(workloads)
+
+    service_bindings = [
+        ServiceBinding(virtual_service=Reference(href=virtual_service), workload=Reference(href=href))  # type: ignore
+        for href in workloads
+    ]
+
+    response = client.service_bindings.create(service_bindings)  # type: ignore
+    results = json.loads(json.dumps(response, cls=IllumioEncoder))
+    readable_output = prepare_service_binding_output(results)
+
+    return CommandResults(
+        outputs_prefix="Illumio.ServiceBinding",
+        readable_output=readable_output,
+        outputs_key_field="href",
+        outputs=remove_empty_elements(results),
+        raw_response=results,
+    )
+
+
+def object_provision_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> CommandResults:
+    """
+    Command function for illumio-objects-provision command.
+
+    Args:
+        client: Client object to be used.
+        args: Arguments passed with the command.
+
+    Returns:
+        Standard command results.
+    """
+    security_policy_objects = args.get("security_policy_objects", "")
+    validate_required_parameters(security_policy_objects=security_policy_objects)
+    security_policy_objects = argToList(security_policy_objects)
+    change_description = generate_change_description_for_object_provision(hrefs=security_policy_objects)
+
+    response_object = client.provision_policy_changes(
+        change_description=change_description, hrefs=security_policy_objects)
+    response_dict = response_object.to_json()
+
+    hr_output = prepare_object_provision_output(response_dict)
+
+    # Converting draft HREFs to active
+    provisioned_hrefs = [convert_draft_href_to_active(href) for href in security_policy_objects]
+
+    response_dict["provisioned_hrefs"] = provisioned_hrefs
+
+    return CommandResults(outputs_prefix="Illumio.PolicyState", outputs_key_field="href",
+                          outputs=remove_empty_elements(response_dict), readable_output=hr_output,
+                          raw_response=response_dict)
+
+
 def main():
     """Parse params and runs command functions."""
     try:
@@ -281,6 +418,9 @@ def main():
             )
 
         base_url = params.get("url")
+        if base_url is None:
+            raise ValueError("Server URL is a required parameter")
+
         proxy = handle_proxy()
 
         client = PolicyComputeEngine(url=base_url, port=port, org_id=org_id)
@@ -293,6 +433,8 @@ def main():
             illumio_commands = {
                 "illumio-traffic-analysis": traffic_analysis_command,
                 "illumio-virtual-service-create": virtual_service_create_command,
+                "illumio-service-binding-create": service_binding_create_command,
+                "illumio-object-provision": object_provision_command
             }
             if command in illumio_commands:
                 args = demisto.args()
