@@ -1,18 +1,22 @@
 """Test file for Illumio Integration."""
 
 import io
+import re
 
 import pytest
 import illumio
-from illumio import TrafficFlow, ServiceBinding, Workload, IllumioApiException, PolicyVersion
+from illumio import TrafficFlow, ServiceBinding, Workload, IllumioApiException, PolicyVersion, PolicyComputeEngine, \
+    VirtualService
 
 from CommonServerPython import *  # noqa
-from IllumioCore import *
+from IllumioCore import test_module, InvalidValueError, VALID_POLICY_DECISIONS, VALID_PROTOCOLS, \
+    traffic_analysis_command, prepare_traffic_analysis_output, virtual_service_create_command, \
+    prepare_virtual_service_output, service_binding_create_command, prepare_service_binding_output, \
+    object_provision_command, prepare_object_provision_output
 
 """ CONSTANTS """
 
 WORKLOAD_EXP_URL = "/orgs/1/workloads/dummy"
-SERVICE_BINDING_URL = "https://127.0.0.1:8443/api/v2/orgs/1/service_bindings"
 VIRTUAL_SERVICE_EXP_URL = "/orgs/1/sec_policy/active/virtual_services/dummy"
 TEST_DATA_DIRECTORY = os.path.join(os.path.dirname(os.path.realpath(__file__)), "test_data")
 INVALID_PORT_NUMBER_CREATE_VIRTUAL_SERVICE_EXCEPTION_MESSAGE = (
@@ -25,7 +29,6 @@ INVALID_ENFORCEMENT_MODES_EXCEPTION_MESSAGE = "{} is an invalid enforcement mode
 INVALID_VISIBILITY_LEVEL_EXCEPTION_MESSAGE = "{} is an invalid visibility level."
 INVALID_BOOLEAN_EXCEPTION_MESSAGE = "Argument does not contain a valid boolean-like value"
 INVALID_MAX_RESULTS_EXCEPTION_MESSAGE = "{} is an invalid value for max results. Max results must be between 0 and 500"
-INVALID_VALUE_EXCEPTION_MESSAGE = "{} is an invalid for {}."
 
 
 @pytest.fixture
@@ -102,9 +105,9 @@ def service_binding_success():
 def service_binding_success_hr():
     """Retrieve the human-readable for service binding."""
     with open(
-        os.path.join(
-            TEST_DATA_DIRECTORY, "create_service_binding_success_response_hr.md"
-        )
+            os.path.join(
+                TEST_DATA_DIRECTORY, "create_service_binding_success_response_hr.md"
+            )
     ) as f:
         expected_hr_output = f.read()
     return expected_hr_output
@@ -124,6 +127,12 @@ def object_provision_success_hr():
     with open(os.path.join(TEST_DATA_DIRECTORY, "object_provision_success.md")) as f:
         expected_hr_output = f.read()
     return expected_hr_output
+
+
+@pytest.fixture(scope="module")
+def service_binding_reference_success():
+    return util_load_json(
+        os.path.join(TEST_DATA_DIRECTORY, "create_virtual_service_success_response.json"))
 
 
 def test_test_module(requests_mock, mock_client):
@@ -380,8 +389,8 @@ def test_virtual_service_create_command_when_invalid_arguments_provided(err_msg,
         assert str(err.value) == err_msg
 
 
-def test_service_binding_create_command_for_success(mock_client, service_binding_success, monkeypatch
-):
+def test_service_binding_create_command_for_success(mock_client, service_binding_success, monkeypatch,
+                                                    service_binding_reference_success):
     """Test case scenario for successful execution of create_service_binding.
 
     Given:
@@ -397,6 +406,10 @@ def test_service_binding_create_command_for_success(mock_client, service_binding
         "create",
         lambda *a: ServiceBinding.from_json(service_binding_success),
     )
+
+    monkeypatch.setattr(illumio.pce.PolicyComputeEngine._PCEObjectAPI, "get_by_reference",
+                        lambda *a: PolicyVersion.from_json(service_binding_reference_success))
+
     args = {"workloads": WORKLOAD_EXP_URL, "virtual_service": VIRTUAL_SERVICE_EXP_URL}
     resp = service_binding_create_command(mock_client, args)
     assert resp.raw_response == service_binding_success
@@ -432,7 +445,7 @@ def test_service_binding_create_command_for_human_readable(service_binding_succe
     ],
 )
 def test_service_binding_create_when_invalid_arguments_provided(
-    args, mock_client, requests_mock
+        args, mock_client, requests_mock
 ):
     """Test case scenario when arguments provided to service-binding-create are invalid.
 
@@ -444,7 +457,7 @@ def test_service_binding_create_when_invalid_arguments_provided(
         - Returns a valid error message
     """
     requests_mock.post(
-        SERVICE_BINDING_URL,
+        re.compile("/service_bindings"),
         status_code=406,
         json=[{"token": "invalid_uri", "message": "Invalid URI: {abc}"}],
     )
@@ -453,7 +466,7 @@ def test_service_binding_create_when_invalid_arguments_provided(
         service_binding_create_command(mock_client, args)
 
         assert (
-            str(err.value) == f"406 Client Error: None for url: {SERVICE_BINDING_URL}"
+                str(err.value) == "406 Client Error: None for url: https://127.0.0.1:8443/api/v2/orgs/1/service_bindings"
         )
 
 
@@ -461,17 +474,17 @@ def test_service_binding_create_when_invalid_arguments_provided(
     "err_msg, args",
     [
         (
-            MISSING_REQUIRED_PARAM_EXCEPTION_MESSAGE.format("workloads"),
-            {"workloads": "", "virtual_service": VIRTUAL_SERVICE_EXP_URL},
+                MISSING_REQUIRED_PARAM_EXCEPTION_MESSAGE.format("workloads"),
+                {"workloads": "", "virtual_service": VIRTUAL_SERVICE_EXP_URL},
         ),
         (
-            MISSING_REQUIRED_PARAM_EXCEPTION_MESSAGE.format("virtual_service"),
-            {"workloads": WORKLOAD_EXP_URL, "virtual_service": ""},
+                MISSING_REQUIRED_PARAM_EXCEPTION_MESSAGE.format("virtual_service"),
+                {"workloads": WORKLOAD_EXP_URL, "virtual_service": ""},
         ),
     ],
 )
 def test_create_service_binding_when_blank_arguments_provided(
-    err_msg, args, mock_client
+        err_msg, args, mock_client
 ):
     """Test case scenario when arguments provided to service-binding-create are blank.
 
@@ -513,7 +526,7 @@ def test_object_provision_command_when_invalid_arguments_provided(mock_client):
 
 
 def test_object_provision_command_when_valid_arguments_provided(
-    mock_client, object_provision_success, monkeypatch
+        mock_client, object_provision_success, monkeypatch
 ):
     """
     Test case scenario for execution of object_provision_command when valid arguments are provided.
@@ -537,7 +550,7 @@ def test_object_provision_command_when_valid_arguments_provided(
 
 
 def test_object_provision_command_when_valid_arguments_provided_human_readable(
-    mock_client, object_provision_success, object_provision_success_hr
+        mock_client, object_provision_success, object_provision_success_hr
 ):
     """
     Test case scenario for execution of object_provision_command when valid arguments are provided.
@@ -551,34 +564,3 @@ def test_object_provision_command_when_valid_arguments_provided_human_readable(
     """
     resp = prepare_object_provision_output(object_provision_success)
     assert resp == object_provision_success_hr
-
-
-def test_object_provision_command_when_406_error_code_returned(
-    mock_client, requests_mock
-):
-    """
-    Test case scenario for object_provision_command when object to be provision is already provisioned.
-
-    Given:
-        - object_provision_command function and mock_client to call the function
-    When:
-        - Object to be provision is already provisioned
-    Then:
-        - Should raise exception with proper error message
-    """
-    from IllumioCore import object_provision_command
-
-    mock_args = {"security_policy_objects": "/orgs/1/sec_policy/draft/rule_sets/1605"}
-    expected_sdk_response = util_load_json(
-        os.path.join(TEST_DATA_DIRECTORY, "object_provision_failure.json")
-    )
-
-    expected_err_msg = "406 Client Error: None for url: https://127.0.0.1:8443/api/v2/orgs/1/sec_policy"
-    requests_mock.post(
-        re.compile("/sec_policy"), json=expected_sdk_response, status_code=406
-    )
-
-    with pytest.raises(IllumioApiException) as err:
-        object_provision_command(mock_client, mock_args)
-
-    assert str(err.value) == expected_err_msg

@@ -2,7 +2,8 @@
 from enum import Enum
 
 import urllib3
-from illumio import PolicyComputeEngine, IllumioEncoder, convert_draft_href_to_active
+from datetime import datetime
+from illumio import PolicyComputeEngine, IllumioEncoder, convert_draft_href_to_active, IllumioException
 from illumio.explorer import TrafficQuery
 from illumio.policyobjects import VirtualService, ServicePort, ServiceBinding, Reference
 from illumio.util import convert_protocol
@@ -34,6 +35,7 @@ class Protocol(Enum):
 
 class InvalidValueError(Exception):
     """Custom exception class for invalid values."""
+
     def __init__(self, arg_name="", arg_value="", arg_list=[], message=""):
         if not message:
             message = "{} is an invalid value for {}. Possible values are: {}".format(
@@ -87,10 +89,8 @@ def generate_change_description_for_object_provision(hrefs: List[str]) -> str:
     Returns:
         str: A string with the current time in UTC.
     """
-    from datetime import datetime
-
-    return f"XSOAR - {datetime.now().astimezone(timezone.utc).isoformat()[:-6]}\nProvisioning following objects:" \
-           f"\n{', '.join(hrefs)}"
+    return "XSOAR - {}\nProvisioning following objects:\n{}".format(
+        datetime.now().astimezone(timezone.utc).isoformat()[:-6], ', '.join(hrefs))
 
 
 def validate_traffic_analysis_arguments(port: Optional[int], policy_decisions: list, protocol: str) -> None:
@@ -140,20 +140,20 @@ def prepare_traffic_analysis_output(response: list) -> str:
 
     for traffic in response:
         hr_output.append({
-                "Source IP": traffic.get("src", {}).get("ip"),
-                "Destination IP": traffic.get("dst", {}).get("ip"),
-                "Destination Workload Hostname": traffic.get("dst", {}).get("workload", {}).get("hostname"),
-                "Service Port": traffic.get("service", {}).get("port"),
-                "Service Protocol": Protocol(traffic.get("service").get("proto")).name,
-                "Policy Decision": traffic.get("policy_decision"),
-                "State": traffic.get("state"),
-                "Flow Direction": traffic.get("flow_direction"),
-                "First Detected": arg_to_datetime(
-                    traffic["timestamp_range"]["first_detected"]).strftime(HR_DATE_FORMAT),  # type: ignore
-                "Last Detected": arg_to_datetime(
-                    traffic["timestamp_range"]["last_detected"]).strftime(HR_DATE_FORMAT)  # type: ignore
+            "Source IP": traffic.get("src", {}).get("ip"),
+            "Destination IP": traffic.get("dst", {}).get("ip"),
+            "Destination Workload Hostname": traffic.get("dst", {}).get("workload", {}).get("hostname"),
+            "Service Port": traffic.get("service", {}).get("port"),
+            "Service Protocol": Protocol(traffic.get("service").get("proto")).name,
+            "Policy Decision": traffic.get("policy_decision"),
+            "State": traffic.get("state"),
+            "Flow Direction": traffic.get("flow_direction"),
+            "First Detected": arg_to_datetime(
+                traffic["timestamp_range"]["first_detected"]).strftime(HR_DATE_FORMAT),  # type: ignore
+            "Last Detected": arg_to_datetime(
+                traffic["timestamp_range"]["last_detected"]).strftime(HR_DATE_FORMAT)  # type: ignore
 
-            })
+        })
 
     headers = list(hr_output[0].keys()) if hr_output else []
 
@@ -172,14 +172,14 @@ def prepare_virtual_service_output(response: dict) -> str:
     hr_output = []
     for service_port in response.get("service_ports", []):
         hr_output.append({
-                "Virtual Service HREF": response.get("href"),
-                "Created At": arg_to_datetime(response["created_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
-                "Updated At": arg_to_datetime(response["updated_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
-                "Name": response.get("name"),
-                "Description": response.get("description"),
-                "Service Port": service_port.get("port") if "port" in service_port else "all ports have been selected",
-                "Service Protocol": Protocol(service_port.get("proto")).name,
-            })
+            "Virtual Service HREF": response.get("href"),
+            "Created At": arg_to_datetime(response["created_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
+            "Updated At": arg_to_datetime(response["updated_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
+            "Name": response.get("name"),
+            "Description": response.get("description"),
+            "Service Port": service_port.get("port") if "port" in service_port else "all ports have been selected",
+            "Service Protocol": Protocol(service_port.get("proto")).name,
+        })
 
     headers = list(hr_output[0].keys()) if hr_output else []
     title = f'Virtual Service:\n#### Successfully created virtual service: {response.get("href")}\n'
@@ -198,15 +198,11 @@ def prepare_service_binding_output(response: dict) -> str:
     hr_outputs = []
 
     if response.get("errors"):
-        title = "Service Binding:\n#### Workloads have been already binded to the virtual service."
-        hr_outputs.append(
-            {"Status": response.get("errors", {"status": "uniqueness_failure"})[0].get("status")}
-        )
-        return tableToMarkdown(title, hr_outputs, headers=["Status"], removeNull=True)
+        raise ValueError("Workloads have been already binded to the virtual service.")
     else:
         title = "Service Binding:\n#### Workloads have been binded to the virtual service successfully."
         for result in response.get("service_bindings", []):
-            hr_outputs.append(OrderedDict({"Service Binding HREF": result["href"], "Status": "created"}))
+            hr_outputs.append({"Service Binding HREF": result["href"], "Status": "created"})
 
         headers = list(hr_outputs[0].keys()) if hr_outputs else []
         return tableToMarkdown(title, hr_outputs, headers=headers, removeNull=True)
@@ -235,7 +231,7 @@ def prepare_object_provision_output(response: Dict[str, Any]) -> str:
     return tableToMarkdown("Provision Objects:",
                            hr_output,
                            headers=["Provision Object URI", "Commit Message", "Created At"],
-                           metadata=f"Provision is completed for {response.get('href')}",
+                           metadata="Provision is completed for {}".format(response.get('href')),
                            removeNull=True)
 
 
@@ -345,6 +341,12 @@ def service_binding_create_command(client: PolicyComputeEngine, args: dict[str, 
 
     validate_required_parameters(workloads=workloads, virtual_service=virtual_service)
     workloads = argToList(workloads)
+    virtual_service = convert_draft_href_to_active(args.get("virtual_service"))
+    try:
+        _ = client.virtual_services.get_by_reference(virtual_service)
+    except IllumioException as e:
+        raise InvalidValueError(
+            message="no active record for virtual service with HREF {}".format(virtual_service)) from e
 
     service_bindings = [
         ServiceBinding(virtual_service=Reference(href=virtual_service), workload=Reference(href=href))  # type: ignore
@@ -417,9 +419,9 @@ def main():
                 "{} is an invalid value. Organization ID must be a non-zero and positive numeric value.".format(org_id)
             )
 
-        base_url = params.get("url")
-        if base_url is None:
-            raise ValueError("Server URL is a required parameter")
+        base_url = params.get("url").strip()
+        if not base_url:
+            raise ValueError("Server URL is required.")
 
         proxy = handle_proxy()
 
