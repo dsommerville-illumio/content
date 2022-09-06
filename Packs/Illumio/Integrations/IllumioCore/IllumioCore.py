@@ -197,15 +197,15 @@ def prepare_service_binding_output(response: dict) -> str:
     """
     hr_outputs = []
 
-    if response.get("errors"):
-        raise ValueError("Workloads have been already binded to the virtual service.")
+    if response.get("errors") and not response.get("service_bindings"):
+        title = "Service Binding:\n#### Workloads have been already bounded to the virtual service."
     else:
-        title = "Service Binding:\n#### Workloads have been binded to the virtual service successfully."
         for result in response.get("service_bindings", []):
             hr_outputs.append({"Service Binding HREF": result["href"], "Status": "created"})
+        title = "Service Binding:\n#### Workloads have been bounded to the virtual service successfully."
 
-        headers = list(hr_outputs[0].keys()) if hr_outputs else []
-        return tableToMarkdown(title, hr_outputs, headers=headers, removeNull=True)
+    headers = list(hr_outputs[0].keys()) if hr_outputs else []
+    return tableToMarkdown(title, hr_outputs, headers=headers, removeNull=True)
 
 
 def prepare_object_provision_output(response: Dict[str, Any]) -> str:
@@ -343,7 +343,7 @@ def service_binding_create_command(client: PolicyComputeEngine, args: dict[str, 
     workloads = argToList(workloads)
     virtual_service = convert_draft_href_to_active(args.get("virtual_service"))
     try:
-        _ = client.virtual_services.get_by_reference(virtual_service)
+        client.virtual_services.get_by_reference(virtual_service)
     except IllumioException as e:
         raise InvalidValueError(
             message="no active record for virtual service with HREF {}".format(virtual_service)) from e
