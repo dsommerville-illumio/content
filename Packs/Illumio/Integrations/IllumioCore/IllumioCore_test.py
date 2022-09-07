@@ -391,7 +391,7 @@ def test_virtual_service_create_command_when_invalid_arguments_provided(err_msg,
 
 def test_service_binding_create_command_for_success(mock_client, service_binding_success, monkeypatch,
                                                     service_binding_reference_success):
-    """Test case scenario for successful execution of create_service_binding.
+    """Test case scenario for successful execution of service-binding-create.
 
     Given:
         - create_service_binding_command function and mock_client to call the function
@@ -415,8 +415,8 @@ def test_service_binding_create_command_for_success(mock_client, service_binding
     assert resp.raw_response == service_binding_success
 
 
-def test_service_binding_create_command_for_human_readable(service_binding_success, service_binding_success_hr):
-    """Test case scenario for successful execution of test_create_service_binding.
+def test_service_binding_create_command_for_human_readable(service_binding_success_hr):
+    """Test case scenario for successful execution of service-binding-create-command.
 
     Given:
         - create_service_binding_command function and mock_client to call the function
@@ -503,7 +503,7 @@ def test_create_service_binding_when_blank_arguments_provided(
 
 def test_object_provision_command_when_invalid_arguments_provided(mock_client):
     """
-    Test case scenario for execution of object_provision_command when invalid arguments are provided.
+    Test case scenario for execution of object-provision-command when invalid arguments are provided.
 
     Given:
         - object_provision_command function and mock_client to call the function
@@ -529,7 +529,7 @@ def test_object_provision_command_when_valid_arguments_provided(
         mock_client, object_provision_success, monkeypatch
 ):
     """
-    Test case scenario for execution of object_provision_command when valid arguments are provided.
+    Test case scenario for execution of object-provision-command when valid arguments are provided.
 
     Given:
         - object_provision_command function and mock_client to call the function
@@ -553,7 +553,7 @@ def test_object_provision_command_when_valid_arguments_provided_human_readable(
         mock_client, object_provision_success, object_provision_success_hr
 ):
     """
-    Test case scenario for execution of object_provision_command when valid arguments are provided.
+    Test case scenario for execution of object-provision-command when valid arguments are provided.
 
     Given:
         - object_provision_command function and mock_client to call the function

@@ -198,7 +198,7 @@ def prepare_service_binding_output(response: dict) -> str:
     hr_outputs = []
 
     if response.get("errors") and not response.get("service_bindings"):
-        title = "Service Binding:\n#### Workloads have been already bounded to the virtual service."
+        title = "Service Binding:\n#### Workloads are already bounded to the virtual service."
     else:
         for result in response.get("service_bindings", []):
             hr_outputs.append({"Service Binding HREF": result["href"], "Status": "created"})
