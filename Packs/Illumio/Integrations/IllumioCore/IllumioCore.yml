@@ -344,6 +344,997 @@ script:
     - contextPath: Illumio.PolicyState.provisioned_hrefs
       description: List of active hrefs after provisioning.
       type: Unknown
+  - arguments:
+    - default: false
+      description: |-
+        Workload HREF.
+        Note: Users can retrieve the list of Href's by executing the "illumio-workload-list" command.
+      isArray: false
+      name: href
+      required: true
+      secret: false
+    deprecated: false
+    description: Retrieves the details of the workload based on the provided workload's
+      HREF.
+    execution: false
+    name: illumio-workload-get
+    outputs:
+    - contextPath: Illumio.Workload.href
+      description: URI of workload.
+      type: String
+    - contextPath: Illumio.Workload.deleted
+      description: Whether this workload has been deleted or not.
+      type: Boolean
+    - contextPath: Illumio.Workload.delete_type
+      description: Workload deletion type.
+      type: String
+    - contextPath: Illumio.Workload.name
+      description: Interface name.
+      type: String
+    - contextPath: Illumio.Workload.description
+      description: The description of this workload.
+      type: String
+    - contextPath: Illumio.Workload.managed
+      description: True if the workload is managed, else false.
+      type: Boolean
+    - contextPath: Illumio.Workload.hostname
+      description: The hostname of this workload.
+      type: String
+    - contextPath: Illumio.Workload.service_principal_name
+      description: The Kerberos Service Principal Name (SPN).
+      type: String
+    - contextPath: Illumio.Workload.agent_to_pce_certificate_authentication_id
+      description: PKI Certificate identifier to be used by the PCE for authenticating
+        the VEN.
+      type: String
+    - contextPath: Illumio.Workload.distinguished_name
+      description: X.509 Subject distinguished name.
+      type: String
+    - contextPath: Illumio.Workload.public_ip
+      description: The public IP address of the server.
+      type: String
+    - contextPath: Illumio.Workload.external_data_set
+      description: External data set identifier.
+      type: String
+    - contextPath: Illumio.Workload.external_data_reference
+      description: External data reference identifier.
+      type: String
+    - contextPath: Illumio.Workload.interfaces.name
+      description: Interface name.
+      type: String
+    - contextPath: Illumio.Workload.interfaces.link_state
+      description: Link state.
+      type: String
+    - contextPath: Illumio.Workload.interfaces.address
+      description: The IP address to assign to this interface.
+      type: String
+    - contextPath: Illumio.Workload.interfaces.cidr_block
+      description: The number of bits in the subnet /24 is 255.255.255.0.
+      type: Number
+    - contextPath: Illumio.Workload.interfaces.default_gateway_address
+      description: The IP address of the default gateway.
+      type: String
+    - contextPath: Illumio.Workload.interfaces.network.href
+      description: URI of the network.
+      type: String
+    - contextPath: Illumio.Workload.interfaces.network_detection_mode
+      description: Network detection mode.
+      type: String
+    - contextPath: Illumio.Workload.interfaces.friendly_name
+      description: User-friendly name for interface.
+      type: String
+    - contextPath: Illumio.Workload.service_provider
+      description: Service provider.
+      type: String
+    - contextPath: Illumio.Workload.data_center
+      description: Data center.
+      type: String
+    - contextPath: Illumio.Workload.data_center_zone
+      description: Data center zone.
+      type: String
+    - contextPath: Illumio.Workload.os_id
+      description: Our OS identifier.
+      type: String
+    - contextPath: Illumio.Workload.os_detail
+      description: Additional OS details - just displayed to the end user.
+      type: String
+    - contextPath: Illumio.Workload.online
+      description: If this workload is online.
+      type: Boolean
+    - contextPath: Illumio.Workload.firewall_coexistence.illumio_primary
+      description: Illumio is the primary firewall if set to true.
+      type: Boolean
+    - contextPath: Illumio.Workload.containers_inherit_host_policy
+      description: This workload will apply the policy it receives both to itself
+        and the containers hosted by it.
+      type: Boolean
+    - contextPath: Illumio.Workload.blocked_connection_action
+      description: Firewall action for blocked connections.
+      type: String
+    - contextPath: Illumio.Workload.labels.href
+      description: URI of this label.
+      type: String
+    - contextPath: Illumio.Workload.labels.deleted
+      description: Assigned labels.
+      type: Boolean
+    - contextPath: Illumio.Workload.labels.key
+      description: Key in key-value pair.
+      type: String
+    - contextPath: Illumio.Workload.labels.value
+      description: Value in key-value pair.
+      type: String
+    - contextPath: Illumio.Workload.labels.external_data_set
+      description: External data set identifier.
+      type: String
+    - contextPath: Illumio.Workload.labels.external_data_reference
+      description: External data reference identifier.
+      type: String
+    - contextPath: Illumio.Workload.labels.created_at
+      description: Timestamp when this label was first created.
+      type: Date
+    - contextPath: Illumio.Workload.labels.updated_at
+      description: Timestamp when this label was last updated.
+      type: Date
+    - contextPath: Illumio.Workload.labels.created_by.href
+      description: User who has originally created this label.
+      type: String
+    - contextPath: Illumio.Workload.labels.updated_by.href
+      description: User who has last updated this label.
+      type: String
+    - contextPath: Illumio.Workload.services.uptime_seconds
+      description: How long since the last reboot of this box - used as a timestamp
+        for this.
+      type: Number
+    - contextPath: Illumio.Workload.services.created_at
+      description: Timestamp when this service was first created.
+      type: Date
+    - contextPath: Illumio.Workload.services.open_service_ports.protocol
+      description: Transport protocol.
+      type: Number
+    - contextPath: Illumio.Workload.services.open_service_ports.address
+      description: The local address this service is bound to.
+      type: String
+    - contextPath: Illumio.Workload.services.open_service_ports.port
+      description: The local port this service is bound to.
+      type: Number
+    - contextPath: Illumio.Workload.services.open_service_ports.process_name
+      description: The process name (including the full path).
+      type: String
+    - contextPath: Illumio.Workload.services.open_service_ports.user
+      description: The user account that the process is running under.
+      type: String
+    - contextPath: Illumio.Workload.services.open_service_ports.package
+      description: The RPM/DEB package that the program is part of.
+      type: String
+    - contextPath: Illumio.Workload.services.open_service_ports.win_service_name
+      description: Name of the windows service.
+      type: String
+    - contextPath: Illumio.Workload.vulnerabilities_summary.num_vulnerabilities
+      description: Number of vulnerabilities associated with the workload.
+      type: Number
+    - contextPath: Illumio.Workload.vulnerabilities_summary.vulnerable_port_exposure
+      description: The aggregated vulnerability port exposure score of the workload
+        across all the vulnerable ports.
+      type: Number
+    - contextPath: Illumio.Workload.vulnerabilities_summary.vulnerable_port_wide_exposure.any
+      description: The boolean value represents if at least one port is exposed to
+        the internet (any rule) on the workload.
+      type: Boolean
+    - contextPath: Illumio.Workload.vulnerabilities_summary.vulnerable_port_wide_exposure.ip_list
+      description: The boolean value represents if at least one port is exposed to
+        ip_list(s) on the workload.
+      type: Boolean
+    - contextPath: Illumio.Workload.vulnerabilities_summary.vulnerability_exposure_score
+      description: The aggregated vulnerability exposure score of the workload across
+        all the vulnerable ports.
+      type: Number
+    - contextPath: Illumio.Workload.vulnerabilities_summary.vulnerability_score
+      description: The aggregated vulnerability score of the workload across all the
+        vulnerable ports.
+      type: Number
+    - contextPath: Illumio.Workload.vulnerabilities_summary.max_vulnerability_score
+      description: The maximum of all the vulnerability scores associated with the
+        detected_vulnerabilities on the workload.
+      type: Number
+    - contextPath: Illumio.Workload.detected_vulnerabilities.ip_address
+      description: The IP address of the host where the vulnerability is found.
+      type: String
+    - contextPath: Illumio.Workload.detected_vulnerabilities.port
+      description: The port which is associated with the vulnerability.
+      type: Number
+    - contextPath: Illumio.Workload.detected_vulnerabilities.proto
+      description: The protocol which is associated with the vulnerability.
+      type: Number
+    - contextPath: Illumio.Workload.detected_vulnerabilities.port_exposure
+      description: The exposure of the port based on the current policy.
+      type: Number
+    - contextPath: Illumio.Workload.detected_vulnerabilities.port_wide_exposure.any
+      description: The boolean value represents if the port is exposed to the internet
+        (any rule).
+      type: Boolean
+    - contextPath: Illumio.Workload.detected_vulnerabilities.port_wide_exposure.ip_list
+      description: The boolean value represents if the port is exposed to ip_list(s).
+      type: Boolean
+    - contextPath: Illumio.Workload.detected_vulnerabilities.workload.href
+      description: The URI of the workload to which this vulnerability belongs to.
+      type: String
+    - contextPath: Illumio.Workload.detected_vulnerabilities.vulnerability.href
+      description: The URI of the vulnerability class to which this vulnerability
+        belongs to.
+      type: String
+    - contextPath: Illumio.Workload.detected_vulnerabilities.vulnerability.score
+      description: The normalized score of the vulnerability within the range of 0
+        to 100.
+      type: Number
+    - contextPath: Illumio.Workload.detected_vulnerabilities.vulnerability.name
+      description: The title/name of the vulnerability.
+      type: String
+    - contextPath: Illumio.Workload.detected_vulnerabilities.vulnerability_report.href
+      description: The URI of the report to which this vulnerability belongs to.
+      type: String
+    - contextPath: Illumio.Workload.agent.config.mode
+      description: DEPRECATED AND REPLACED (Use workload enforcement_mode instead)
+      type: String
+    - contextPath: Illumio.Workload.agent.config.log_traffic
+      description: True if we want to log traffic events from this workload.
+      type: Boolean
+    - contextPath: Illumio.Workload.agent.config.security_policy_update_mode
+      description: Defines the current policy update mode, which can be either adaptive
+        or static based on static policy scopes.
+      type: String
+    - contextPath: Illumio.Workload.agent.href
+      description: HREF of the service agent.
+      type: String
+    - contextPath: Illumio.Workload.agent.secure_connect.matching_issuer_name
+      description: Issuer name match criteria for certificate used during establishing
+        secure connections.
+      type: String
+    - contextPath: Illumio.Workload.agent.status.uid
+      description: The unique ID reported by the server.
+      type: String
+    - contextPath: Illumio.Workload.agent.status.last_heartbeat_on
+      description: The last time (rfc3339 timestamp) a heartbeat was received from
+        this workload.
+      type: Date
+    - contextPath: Illumio.Workload.agent.status.uptime_seconds
+      description: How long since the last reboot of this server. Recorded in DB at
+        the time of the last heartbeat.
+      type: Number
+    - contextPath: Illumio.Workload.agent.status.agent_version
+      description: Agent software version string.
+      type: String
+    - contextPath: Illumio.Workload.agent.status.managed_since
+      description: The time (rfc3339 timestamp) at which this workload became managed
+        by a VEN.
+      type: Date
+    - contextPath: Illumio.Workload.agent.status.fw_config_current
+      description: If this workload's firewall config is up to string'.
+      type: Boolean
+    - contextPath: Illumio.Workload.agent.status.firewall_rule_count
+      description: 'DEPRECATED WITH NO REPLACEMENT: Number of firewall rules currently
+        installed.'
+      type: Number
+    - contextPath: Illumio.Workload.agent.status.security_policy_refresh_at
+      description: DEPRECATED AND REPLACED (USE security_policy_applied_at and security_policy_received_at
+        INSTEAD).
+      type: Date
+    - contextPath: Illumio.Workload.agent.status.security_policy_applied_at
+      description: Last reported time when policy was applied (UTC).
+      type: Date
+    - contextPath: Illumio.Workload.agent.status.security_policy_received_at
+      description: Last reported time when policy was received (UTC).
+      type: Date
+    - contextPath: Illumio.Workload.agent.status.agent_health_errors.errors
+      description: Errors associated with the security policy.
+      type: Unknown
+    - contextPath: Illumio.Workload.agent.status.agent_health_errors.warnings
+      description: Warnings associated with the security policy.
+      type: Unknown
+    - contextPath: Illumio.Workload.agent.status.agent_health.type
+      description: This field describes the error or the warning type.
+      type: String
+    - contextPath: Illumio.Workload.agent.status.agent_health.severity
+      description: Severity of the error type.
+      type: String
+    - contextPath: Illumio.Workload.agent.status.agent_health.audit_event
+      description: The URI of the audit event that was generated for the corresponding
+        error or warning.
+      type: String
+    - contextPath: Illumio.Workload.agent.status.security_policy_sync_state
+      description: Current state of security policy.
+      type: String
+    - contextPath: Illumio.Workload.agent.active_pce_fqdn
+      description: The FQDN of the PCE that received the agent's last heartbeat.
+      type: String
+    - contextPath: Illumio.Workload.agent.target_pce_fqdn
+      description: The FQDN of the PCE the agent will use for future connections.
+      type: String
+    - contextPath: Illumio.Workload.agent.type
+      description: Agent type.
+      type: String
+    - contextPath: Illumio.Workload.ven.href
+      description: The URI of the VEN that manages this workload. This replaces the
+        'agent' field of this object.
+      type: String
+    - contextPath: Illumio.Workload.ven.hostname
+      description: The hostname of the host managed by the VEN, only displayed in
+        expanded representations.
+      type: String
+    - contextPath: Illumio.Workload.ven.name
+      description: The friendly name of the VEN, only displayed in expanded representations.
+      type: String
+    - contextPath: Illumio.Workload.ven.status
+      description: Status of the VEN, only displayed in expanded representations.
+      type: String
+    - contextPath: Illumio.Workload.enforcement_mode
+      description: Workload's enforcement mode.
+      type: String
+    - contextPath: Illumio.Workload.selectively_enforced_services.href
+      description: Workload's selective enforcement mode.
+      type: String
+    - contextPath: Illumio.Workload.created_at
+      description: The time (rfc3339 timestamp) at which this workload was created.
+      type: Date
+    - contextPath: Illumio.Workload.updated_at
+      description: The time (rfc3339 timestamp) at which this workload was last updated.
+      type: Date
+    - contextPath: Illumio.Workload.deleted_at
+      description: The time (rfc3339 timestamp) at which this workload was deleted.
+      type: Date
+    - contextPath: Illumio.Workload.created_by.href
+      description: The URI of the user who has created this workload.
+      type: String
+    - contextPath: Illumio.Workload.updated_by.href
+      description: The URI of the user who has last updated this workload.
+      type: String
+    - contextPath: Illumio.Workload.deleted_by.href
+      description: The URI of the user who has deleted this workload.
+      type: String
+    - contextPath: Illumio.Workload.container_cluster.href
+      description: Container cluster URI.
+      type: String
+    - contextPath: Illumio.Workload.container_cluster.name
+      description: Container cluster name.
+      type: String
+    - contextPath: Illumio.Workload.ike_authentication_certificate
+      description: IKE authentication certificate for certificate-based Secure Connect
+        and Machine Auth connections.
+      type: String
+  - arguments:
+    - default: false
+      defaultValue: '50'
+      description: |-
+        Maximum number of workloads to return in the result set. The value must be positive integer. High value will result in performance issue.
+        Note: 2500 is the optimum value.
+      isArray: false
+      name: max_results
+      required: false
+      secret: false
+    - default: false
+      description: Workload name.
+      isArray: false
+      name: name
+      required: false
+      secret: false
+    - default: false
+      description: Workload hostname.
+      isArray: false
+      name: hostname
+      required: false
+      secret: false
+    - default: false
+      description: Workload IP address. Supports partial matches.
+      isArray: false
+      name: ip_address
+      required: false
+      secret: false
+    - auto: PREDEFINED
+      default: false
+      description: True to return online workloads, false to return offline workloads.
+        Leave empty to return both.
+      isArray: false
+      name: online
+      predefined:
+      - 'true'
+      - 'false'
+      required: false
+      secret: false
+    - auto: PREDEFINED
+      default: false
+      description: True to return managed workloads, false to return unmanaged workloads.
+        Leave empty to return both.
+      isArray: false
+      name: managed
+      predefined:
+      - 'true'
+      - 'false'
+      required: false
+      secret: false
+    - default: false
+      description: Workload labels.
+      isArray: true
+      name: labels
+      required: false
+      secret: false
+    - auto: PREDEFINED
+      default: false
+      description: Workload enforcement mode.
+      isArray: false
+      name: enforcement_mode
+      predefined:
+      - visibility_only
+      - full
+      - idle
+      - selective
+      required: false
+      secret: false
+    - auto: PREDEFINED
+      default: false
+      description: Workload visibility level.
+      isArray: false
+      name: visibility_level
+      predefined:
+      - flow_full_detail
+      - flow_summary
+      - flow_drops
+      - flow_off
+      - enhanced_data_collection
+      required: false
+      secret: false
+    deprecated: false
+    description: Retrieves the list of workloads based on the provided filters.
+    execution: false
+    name: illumio-workloads-list
+    outputs:
+    - contextPath: Illumio.Workloads.href
+      description: URI of workload.
+      type: String
+    - contextPath: Illumio.Workloads.deleted
+      description: Whether this workload has been deleted or not.
+      type: Boolean
+    - contextPath: Illumio.Workloads.delete_type
+      description: Workload deletion type.
+      type: String
+    - contextPath: Illumio.Workloads.name
+      description: Interface name.
+      type: String
+    - contextPath: Illumio.Workloads.description
+      description: The description of this workload.
+      type: String
+    - contextPath: Illumio.Workloads.managed
+      description: True if the workload is managed, else false.
+      type: Boolean
+    - contextPath: Illumio.Workloads.hostname
+      description: The hostname of this workload.
+      type: String
+    - contextPath: Illumio.Workloads.service_principal_name
+      description: The Kerberos Service Principal Name (SPN).
+      type: String
+    - contextPath: Illumio.Workloads.agent_to_pce_certificate_authentication_id
+      description: PKI Certificate identifier to be used by the PCE for authenticating
+        the VEN.
+      type: String
+    - contextPath: Illumio.Workloads.distinguished_name
+      description: X.509 Subject distinguished name.
+      type: String
+    - contextPath: Illumio.Workloads.public_ip
+      description: The public IP address of the server.
+      type: String
+    - contextPath: Illumio.Workloads.external_data_set
+      description: External data set identifier.
+      type: String
+    - contextPath: Illumio.Workloads.external_data_reference
+      description: External data reference identifier.
+      type: String
+    - contextPath: Illumio.Workloads.interfaces.name
+      description: Interface name.
+      type: String
+    - contextPath: Illumio.Workloads.interfaces.link_state
+      description: Link state.
+      type: String
+    - contextPath: Illumio.Workloads.interfaces.address
+      description: The IP address to assign to this interface.
+      type: String
+    - contextPath: Illumio.Workloads.interfaces.cidr_block
+      description: The number of bits in the subnet /24 is 255.255.255.0.
+      type: Number
+    - contextPath: Illumio.Workloads.interfaces.default_gateway_address
+      description: The IP address of the default gateway.
+      type: String
+    - contextPath: Illumio.Workloads.interfaces.network.href
+      description: URI of the network.
+      type: String
+    - contextPath: Illumio.Workloads.interfaces.network_detection_mode
+      description: Network detection mode.
+      type: String
+    - contextPath: Illumio.Workloads.interfaces.friendly_name
+      description: User-friendly name for interface.
+      type: String
+    - contextPath: Illumio.Workloads.service_provider
+      description: Service provider.
+      type: String
+    - contextPath: Illumio.Workloads.data_center
+      description: Data center.
+      type: String
+    - contextPath: Illumio.Workloads.data_center_zone
+      description: Data center zone.
+      type: String
+    - contextPath: Illumio.Workloads.os_id
+      description: Our OS identifier.
+      type: String
+    - contextPath: Illumio.Workloads.os_detail
+      description: Additional OS details - just displayed to the end user.
+      type: String
+    - contextPath: Illumio.Workloads.online
+      description: If this workload is online.
+      type: Boolean
+    - contextPath: Illumio.Workloads.firewall_coexistence.illumio_primary
+      description: Illumio is the primary firewall if set to true.
+      type: Boolean
+    - contextPath: Illumio.Workloads.containers_inherit_host_policy
+      description: This workload will apply the policy it receives both to itself
+        and the containers hosted by it.
+      type: Boolean
+    - contextPath: Illumio.Workloads.blocked_connection_action
+      description: Firewall action for blocked connections.
+      type: String
+    - contextPath: Illumio.Workloads.labels.href
+      description: URI of this label.
+      type: String
+    - contextPath: Illumio.Workloads.labels.deleted
+      description: Assigned labels.
+      type: Boolean
+    - contextPath: Illumio.Workloads.labels.key
+      description: Key in key-value pair.
+      type: String
+    - contextPath: Illumio.Workloads.labels.value
+      description: Value in key-value pair.
+      type: String
+    - contextPath: Illumio.Workloads.labels.external_data_set
+      description: External data set identifier.
+      type: String
+    - contextPath: Illumio.Workloads.labels.external_data_reference
+      description: External data reference identifier.
+      type: String
+    - contextPath: Illumio.Workloads.labels.created_at
+      description: Timestamp when this label was first created.
+      type: Date
+    - contextPath: Illumio.Workloads.labels.updated_at
+      description: Timestamp when this label was last updated.
+      type: Date
+    - contextPath: Illumio.Workloads.labels.created_by.href
+      description: User who has originally created this label.
+      type: String
+    - contextPath: Illumio.Workloads.labels.updated_by.href
+      description: User who has last updated this label.
+      type: String
+    - contextPath: Illumio.Workloads.services.uptime_seconds
+      description: How long since the last reboot of this box - used as a timestamp
+        for this.
+      type: Number
+    - contextPath: Illumio.Workloads.services.created_at
+      description: Timestamp when this service was first created.
+      type: Date
+    - contextPath: Illumio.Workloads.services.open_service_ports.protocol
+      description: Transport protocol.
+      type: Number
+    - contextPath: Illumio.Workloads.services.open_service_ports.address
+      description: The local address this service is bound to.
+      type: String
+    - contextPath: Illumio.Workloads.services.open_service_ports.port
+      description: The local port this service is bound to.
+      type: Number
+    - contextPath: Illumio.Workloads.services.open_service_ports.process_name
+      description: The process name (including the full path).
+      type: String
+    - contextPath: Illumio.Workloads.services.open_service_ports.user
+      description: The user account that the process is running under.
+      type: String
+    - contextPath: Illumio.Workloads.services.open_service_ports.package
+      description: The RPM/DEB package that the program is part of.
+      type: String
+    - contextPath: Illumio.Workloads.services.open_service_ports.win_service_name
+      description: Name of the windows service.
+      type: String
+    - contextPath: Illumio.Workloads.vulnerabilities_summary.num_vulnerabilities
+      description: Number of vulnerabilities associated with the workload.
+      type: Number
+    - contextPath: Illumio.Workloads.vulnerabilities_summary.vulnerable_port_exposure
+      description: The aggregated vulnerability port exposure score of the workload
+        across all the vulnerable ports.
+      type: Number
+    - contextPath: Illumio.Workloads.vulnerabilities_summary.vulnerable_port_wide_exposure.any
+      description: The boolean value represents if at least one port is exposed to
+        the internet (any rule) on the workload.
+      type: Boolean
+    - contextPath: Illumio.Workloads.vulnerabilities_summary.vulnerable_port_wide_exposure.ip_list
+      description: The boolean value represents if at least one port is exposed to
+        ip_list(s) on the workload.
+      type: Boolean
+    - contextPath: Illumio.Workloads.vulnerabilities_summary.vulnerability_exposure_score
+      description: The aggregated vulnerability exposure score of the workload across
+        all the vulnerable ports.
+      type: Number
+    - contextPath: Illumio.Workloads.vulnerabilities_summary.vulnerability_score
+      description: The aggregated vulnerability score of the workload across all the
+        vulnerable ports.
+      type: Number
+    - contextPath: Illumio.Workloads.vulnerabilities_summary.max_vulnerability_score
+      description: The maximum of all the vulnerability scores associated with the
+        detected_vulnerabilities on the workload.
+      type: Number
+    - contextPath: Illumio.Workloads.detected_vulnerabilities.ip_address
+      description: The IP address of the host where the vulnerability is found.
+      type: String
+    - contextPath: Illumio.Workloads.detected_vulnerabilities.port
+      description: The port which is associated with the vulnerability.
+      type: Number
+    - contextPath: Illumio.Workloads.detected_vulnerabilities.proto
+      description: The protocol which is associated with the vulnerability.
+      type: Number
+    - contextPath: Illumio.Workloads.detected_vulnerabilities.port_exposure
+      description: The exposure of the port based on the current policy.
+      type: Number
+    - contextPath: Illumio.Workloads.detected_vulnerabilities.port_wide_exposure.any
+      description: The boolean value represents if the port is exposed to the internet
+        (any rule).
+      type: Boolean
+    - contextPath: Illumio.Workloads.detected_vulnerabilities.port_wide_exposure.ip_list
+      description: The boolean value represents if the port is exposed to ip_list(s).
+      type: Boolean
+    - contextPath: Illumio.Workloads.detected_vulnerabilities.workload.href
+      description: The URI of the workload to which this vulnerability belongs to.
+      type: String
+    - contextPath: Illumio.Workloads.detected_vulnerabilities.vulnerability.href
+      description: The URI of the vulnerability class to which this vulnerability
+        belongs to.
+      type: String
+    - contextPath: Illumio.Workloads.detected_vulnerabilities.vulnerability.score
+      description: The normalized score of the vulnerability within the range of 0
+        to 100.
+      type: Number
+    - contextPath: Illumio.Workloads.detected_vulnerabilities.vulnerability.name
+      description: The title/name of the vulnerability.
+      type: String
+    - contextPath: Illumio.Workloads.detected_vulnerabilities.vulnerability_report.href
+      description: The URI of the report to which this vulnerability belongs to.
+      type: String
+    - contextPath: Illumio.Workloads.agent.config.mode
+      description: DEPRECATED AND REPLACED (Use workload enforcement_mode instead)
+      type: String
+    - contextPath: Illumio.Workloads.agent.config.log_traffic
+      description: True if we want to log traffic events from this workload.
+      type: Boolean
+    - contextPath: Illumio.Workloads.agent.config.security_policy_update_mode
+      description: Defines the current policy update mode, which can be either adaptive
+        or static based on static policy scopes.
+      type: String
+    - contextPath: Illumio.Workloads.agent.href
+      description: HREF of the service agent.
+      type: String
+    - contextPath: Illumio.Workloads.agent.secure_connect.matching_issuer_name
+      description: Issuer name match criteria for certificate used during establishing
+        secure connections.
+      type: String
+    - contextPath: Illumio.Workloads.agent.status.uid
+      description: The unique ID reported by the server.
+      type: String
+    - contextPath: Illumio.Workloads.agent.status.last_heartbeat_on
+      description: The last time (rfc3339 timestamp) a heartbeat was received from
+        this workload.
+      type: Date
+    - contextPath: Illumio.Workloads.agent.status.uptime_seconds
+      description: How long since the last reboot of this server. Recorded in DB at
+        the time of the last heartbeat.
+      type: Number
+    - contextPath: Illumio.Workloads.agent.status.agent_version
+      description: Agent software version string.
+      type: String
+    - contextPath: Illumio.Workloads.agent.status.managed_since
+      description: The time (rfc3339 timestamp) at which this workload became managed
+        by a VEN.
+      type: Date
+    - contextPath: Illumio.Workloads.agent.status.fw_config_current
+      description: If this workload's firewall config is up to string'.
+      type: Boolean
+    - contextPath: Illumio.Workloads.agent.status.firewall_rule_count
+      description: 'DEPRECATED WITH NO REPLACEMENT: Number of firewall rules currently
+        installed.'
+      type: Number
+    - contextPath: Illumio.Workloads.agent.status.security_policy_refresh_at
+      description: DEPRECATED AND REPLACED (USE security_policy_applied_at and security_policy_received_at
+        INSTEAD).
+      type: Date
+    - contextPath: Illumio.Workloads.agent.status.security_policy_applied_at
+      description: Last reported time when policy was applied (UTC).
+      type: Date
+    - contextPath: Illumio.Workloads.agent.status.security_policy_received_at
+      description: Last reported time when policy was received (UTC).
+      type: Date
+    - contextPath: Illumio.Workloads.agent.status.agent_health_errors.errors
+      description: Errors associated with the security policy.
+      type: Unknown
+    - contextPath: Illumio.Workloads.agent.status.agent_health_errors.warnings
+      description: Warnings associated with the security policy.
+      type: Unknown
+    - contextPath: Illumio.Workloads.agent.status.agent_health.type
+      description: This field describes the error or the warning type.
+      type: String
+    - contextPath: Illumio.Workloads.agent.status.agent_health.severity
+      description: Severity of the error type.
+      type: String
+    - contextPath: Illumio.Workloads.agent.status.agent_health.audit_event
+      description: The URI of the audit event that was generated for the corresponding
+        error or warning.
+      type: String
+    - contextPath: Illumio.Workloads.agent.status.security_policy_sync_state
+      description: Current state of security policy.
+      type: String
+    - contextPath: Illumio.Workloads.agent.active_pce_fqdn
+      description: The FQDN of the PCE that received the agent's last heartbeat.
+      type: String
+    - contextPath: Illumio.Workloads.agent.target_pce_fqdn
+      description: The FQDN of the PCE the agent will use for future connections.
+      type: String
+    - contextPath: Illumio.Workloads.agent.type
+      description: Agent type.
+      type: String
+    - contextPath: Illumio.Workloads.ven.href
+      description: The URI of the VEN that manages this workload. This replaces the
+        'agent' field of this object.
+      type: String
+    - contextPath: Illumio.Workloads.ven.hostname
+      description: The hostname of the host managed by the VEN, only displayed in
+        expanded representations.
+      type: String
+    - contextPath: Illumio.Workloads.ven.name
+      description: The friendly name of the VEN, only displayed in expanded representations.
+      type: String
+    - contextPath: Illumio.Workloads.ven.status
+      description: Status of the VEN, only displayed in expanded representations.
+      type: String
+    - contextPath: Illumio.Workloads.enforcement_mode
+      description: Workload's enforcement mode.
+      type: String
+    - contextPath: Illumio.Workloads.selectively_enforced_services.href
+      description: Workload's selective enforcement mode.
+      type: String
+    - contextPath: Illumio.Workloads.created_at
+      description: The time (rfc3339 timestamp) at which this workload was created.
+      type: Date
+    - contextPath: Illumio.Workloads.updated_at
+      description: The time (rfc3339 timestamp) at which this workload was last updated.
+      type: Date
+    - contextPath: Illumio.Workloads.deleted_at
+      description: The time (rfc3339 timestamp) at which this workload was deleted.
+      type: Date
+    - contextPath: Illumio.Workloads.created_by.href
+      description: The URI of the user who has created this workload.
+      type: String
+    - contextPath: Illumio.Workloads.updated_by.href
+      description: The URI of the user who has last updated this workload.
+      type: String
+    - contextPath: Illumio.Workloads.deleted_by.href
+      description: The URI of the user who has deleted this workload.
+      type: String
+    - contextPath: Illumio.Workloads.container_cluster.href
+      description: Container cluster URI.
+      type: String
+    - contextPath: Illumio.Workloads.container_cluster.name
+      description: Container cluster name.
+      type: String
+    - contextPath: Illumio.Workloads.ike_authentication_certificate
+      description: IKE authentication certificate for certificate-based Secure Connect
+        and Machine Auth connections.
+      type: String
+  - arguments:
+    - default: false
+      description: Enforcement boundary name.
+      isArray: false
+      name: name
+      required: true
+      secret: false
+    - default: false
+      description: Port number.
+      isArray: false
+      name: port
+      required: true
+      secret: false
+    - auto: PREDEFINED
+      default: false
+      defaultValue: TCP
+      description: Communication protocol.
+      isArray: false
+      name: protocol
+      predefined:
+      - TCP
+      - UDP
+      required: false
+      secret: false
+    - default: false
+      description: List of HREFs of entities to be used as providers for the rule,
+        or "ams" for all workloads. Supports comma separated values.
+      isArray: true
+      name: providers
+      required: true
+      secret: false
+    - default: false
+      description: List of HREFs of entities to be used as consumers for the rule,
+        or "ams" for all workloads. Supports comma separated values.
+      isArray: true
+      name: consumers
+      required: true
+      secret: false
+    deprecated: false
+    description: Creates an enforcement boundary for a particular port/protocol. After
+      completion of this command, provisioning will be done using the "illumio-object-provision"
+      command.
+    execution: false
+    name: illumio-enforcement-boundary-create
+    outputs:
+    - contextPath: Illumio.EnforcementBoundary.href
+      description: Enforcement boundary label URI.
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.created_at
+      description: Enforcement boundary creation time.
+      type: Date
+    - contextPath: Illumio.EnforcementBoundary.updated_at
+      description: Enforcement boundary updated time.
+      type: Date
+    - contextPath: Illumio.EnforcementBoundary.deleted_at
+      description: Enforcement boundary deleted time.
+      type: Date
+    - contextPath: Illumio.EnforcementBoundary.created_by.href
+      description: URI of the user who has created the enforcement boundary.
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.updated_by.href
+      description: URI of the user who has updated the enforcement boundary.
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.deleted_by.href
+      description: URI of the user who has deleted the enforcement boundary.
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.update_type
+      description: Type of the modification done on the enforcement boundary.
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.name
+      description: Name of the enforcement boundary.
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.providers.actors
+      description: All managed workloads ('ams').
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.providers.label.href
+      description: URI of the provider label.
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.providers.label_group.href
+      description: URI of the provider label group.
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.providers.ip_list.href
+      description: Providers IP list label URI.
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.consumers.actors
+      description: All managed workloads ('ams').
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.consumers.label.href
+      description: URI of the consumer label.
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.consumers.label_group.href
+      description: URI of the consumer label group.
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.consumers.ip_list.href
+      description: Consumers IP list label URI.
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.ingress_service.port
+      description: Port of the ingress services.
+      type: Number
+    - contextPath: Illumio.EnforcementBoundary.ingress_services.proto
+      description: Protocol of the ingress services.
+      type: Number
+    - contextPath: Illumio.EnforcementBoundary.ingress_services.href
+      description: URI of the ingress service.
+      type: String
+    - contextPath: Illumio.EnforcementBoundary.caps
+      description: Array of permissions for the entity to the current user - an empty
+        array implies read only access.
+      type: Unknown
+  - arguments:
+    - auto: PREDEFINED
+      default: false
+      description: New enforcement mode to apply.
+      isArray: false
+      name: enforcement_mode
+      predefined:
+      - Idle
+      - Visibility_Only
+      - Selective
+      - Full
+      required: true
+      secret: false
+    - default: false
+      description: "List of workload HREFs to update. Supports comma separated values.\
+        \ \nNote: Users can retrieve the list of Href's by executing the \"illumio-workloads-list\"\
+        \ command."
+      isArray: true
+      name: workloads
+      required: true
+      secret: false
+    deprecated: false
+    description: Update the Enforcement Mode for one or more workloads.
+    execution: false
+    name: illumio-enforcement-mode-update
+    outputs:
+    - contextPath: Illumio.UpdateStatuses.href
+      description: Enforcement mode update workload URI.
+      type: String
+    - contextPath: Illumio.UpdateStatuses.status
+      description: Whether the operation was successful or not.
+      type: String
+  - arguments:
+    - default: false
+      description: |-
+        URI of the IP list.
+        Note: Users can retrieve the list of Href's of IP by executing the "illumio-ip-lists-get" command.
+      isArray: false
+      name: href
+      required: true
+      secret: false
+    deprecated: false
+    description: Retrieves the list of IPs based on the name of the IP list.
+    execution: false
+    name: illumio-ip-list-get
+    outputs:
+    - contextPath: illumio.IPList.href
+      description: URI of th IP list.
+      type: String
+    - contextPath: Illumio.IPList.description
+      description: Description of IP list.
+      type: String
+    - contextPath: Illumio.IPList.external_data_set
+      description: External data set identifier.
+      type: String
+    - contextPath: Illumio.IPList.external_data_reference
+      description: External data reference identifier.
+      type: String
+    - contextPath: Illumio.IPList.created_at
+      description: Time stamp when this IP list was first created.
+      type: Date
+    - contextPath: Illumio.IPList.updated_at
+      description: Time stamp when this IP List was last updated.
+      type: Date
+    - contextPath: Illumio.IPList.deleted_at
+      description: Time stamp when this IP List was deleted.
+      type: Date
+    - contextPath: Illumio.IPList.created_by.href
+      description: User who originally created this IP List.
+      type: String
+    - contextPath: Illumio.IPList.update_by.href
+      description: User who last updated this IP List.
+      type: String
+    - contextPath: Illumio.IPList.deleted_by.href
+      description: User who has deleted this IP List.
+      type: String
+    - contextPath: Illumio.IPList.name
+      description: Name (must be unique).
+      type: String
+    - contextPath: Illumio.IPList.ip_ranges.description
+      description: Description of given IP range.
+      type: String
+    - contextPath: Illumio.IPList.ip_ranges.from_ip
+      description: IP address or a low end of IP range. Might be specified with CIDR
+        notation.
+      type: String
+    - contextPath: Illumio.IPList.ip_ranges.to_ip
+      description: High end of an IP range.
+      type: String
+    - contextPath: Illumio.IPList.ip_ranges.exclusion
+      description: Whether this IP address is an exclusion. Exclusions must be a strict
+        subset of inclusive IP addresses.
+      type: String
+    - contextPath: Illumio.IPList.fqdns.fqdn
+      description: Fully qualified domain name.
+      type: String
+    - contextPath: Illumio.IPList.fqdns.description
+      description: Description of FQDN.
+      type: String
   dockerimage: dev-illumio:1.0.0
   feed: false
   isfetch: false

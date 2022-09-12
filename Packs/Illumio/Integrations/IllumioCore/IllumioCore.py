@@ -3,10 +3,11 @@ from enum import Enum
 
 import urllib3
 from datetime import datetime
-from illumio import PolicyComputeEngine, IllumioEncoder, convert_draft_href_to_active, IllumioException
-from illumio.explorer import TrafficQuery
+from illumio import PolicyComputeEngine, IllumioEncoder, convert_draft_href_to_active, IllumioException, \
+    EnforcementBoundary
+from illumio.explorer import TrafficQuery, Workload
 from illumio.policyobjects import VirtualService, ServicePort, ServiceBinding, Reference
-from illumio.util import convert_protocol
+from illumio.util import convert_protocol, EnforcementMode
 import demistomock as demisto
 from CommonServerPython import *  # noqa # pylint: disable=unused-wildcard-import
 from CommonServerUserPython import *  # noqa
@@ -127,6 +128,66 @@ def validate_virtual_service_arguments(port: int | None, protocol: str) -> None:
         raise InvalidValueError("protocol", protocol, VALID_PROTOCOLS)
 
 
+def validate_workloads_list_arguments(
+    max_results: Optional[int],
+    online: Optional[str],
+    managed: Optional[str],
+    enforcement_mode: Optional[str],
+    visibility_level: Optional[str],
+) -> None:
+    """Validate arguments for workloads-list command.
+
+    Args:
+        max_results: Number of maximum results returned.
+        online: Workload is online or not (yes, no).
+        managed: Workload is managed or not (yes, no).
+        enforcement_mode: Workload enforcement mode.
+        visibility_level: Workload visibility level.
+    """
+    if isinstance(max_results, int) and (max_results < 1):  # type: ignore
+        raise InvalidValueError(
+            message="{} is an invalid value for max_results. Max results must be positive integer.".format(
+                max_results
+            )
+        )
+
+    if online:
+        argToBoolean(online)
+
+    if managed:
+        argToBoolean(managed)
+
+    if enforcement_mode and (enforcement_mode not in SUPPORTED_ENFORCEMENT_MODES):
+        raise InvalidValueError(
+            "enforcement_mode", enforcement_mode, SUPPORTED_ENFORCEMENT_MODES
+        )
+
+    if visibility_level and (visibility_level not in SUPPORTED_VISIBILITY_LEVEL):
+        raise InvalidValueError(
+            "visibility_level", visibility_level, SUPPORTED_VISIBILITY_LEVEL
+        )
+
+
+def validate_enforcement_boundary_create_arguments(
+    port: Optional[int], protocol: str
+) -> None:
+    """Validate arguments for enforcement-boundary-create command.
+
+    Args:
+        port: Port number.
+        protocol: Protocol name.
+    """
+    if port > MAX_PORT or port < MIN_PORT:  # type: ignore
+        raise InvalidValueError(
+            message="{} is an invalid value for port. Value must be in 1 to 65535.".format(
+                port
+            )
+        )
+
+    if protocol not in VALID_PROTOCOLS:
+        raise InvalidValueError("protocol", protocol, VALID_PROTOCOLS)
+
+
 def prepare_traffic_analysis_output(response: list) -> str:
     """Prepare Human Readable output for traffic-analysis-command.
 
@@ -233,6 +294,147 @@ def prepare_object_provision_output(response: Dict[str, Any]) -> str:
                            headers=["Provision Object URI", "Commit Message", "Created At"],
                            metadata="Provision is completed for {}".format(response.get('href')),
                            removeNull=True)
+
+
+def prepare_workload_get_output(response: dict) -> str:
+    """Prepare human-readable output for workload-get command.
+
+    Args:
+        response: Response from the SDK.
+
+    Returns:
+        markdown string to be displayed in the war room.
+    """
+    hr_outputs = []
+    title = "Workload Details:"
+
+    hr_outputs.append(
+        {
+            "Workload HREF": response.get("href"),
+            "Name": response.get("name"),
+            "Description": response.get("description"),
+            "Created At": arg_to_datetime(response["created_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
+            "Updated At": arg_to_datetime(response["updated_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
+            "Hostname": response.get("hostname"),
+        }
+    )
+
+    headers = list(hr_outputs[0].keys()) if hr_outputs else []
+    return tableToMarkdown(title, hr_outputs, headers=headers, removeNull=True)
+
+
+def prepare_workloads_list_output(workloads_list: list) -> str:
+    """Prepare human-readable output for workloads-list command.
+
+    Args:
+        workloads_list: list of workloads in dict format.
+
+    Returns:
+        markdown string to be displayed in the war room.
+    """
+    hr_outputs = []
+    for workload in workloads_list:
+        hr_outputs.append(
+            {
+                "Workload HREF": workload.get("href"),
+                "Name": workload.get("name"),
+                "Hostname": workload.get("hostname"),
+                "Description": workload.get("description"),
+                "Enforcement Mode": workload.get("enforcement_mode"),
+                "Visibility Level": workload.get("visibility_level"),
+                "IP Address": workload.get("public_ip"),
+                "Created At": arg_to_datetime(workload["created_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
+                "Updated At": arg_to_datetime(workload["updated_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
+            }
+        )
+
+    headers = list(hr_outputs[0].keys()) if hr_outputs else []
+    return tableToMarkdown("Workloads:\n", hr_outputs, headers=headers, removeNull=True)
+
+
+def prepare_enforcement_boundary_create_output(response: dict) -> str:
+    """Prepare human-readable output for enforcement-boundary-create command.
+
+    Args:
+        response: result returned after creating enforcement boundary.
+
+    Returns:
+        markdown string to be displayed in the war room.
+    """
+    hr_outputs = []
+    ingress_services = []
+
+    for ingress_service in response.get("ingress_services", []):
+        ingress_service_formatted = ""
+
+        if "href" in ingress_service:
+            ingress_service_formatted = ingress_service.get("href")
+        elif "port" in ingress_service and "proto" in ingress_service:
+            ingress_service_formatted = "{}-{}".format(
+                ingress_service.get("port"), Protocol(ingress_service.get("proto")).name
+            )
+
+        if ingress_service_formatted:
+            ingress_services.append(ingress_service_formatted)
+
+    hr_outputs.append(
+        {
+            "Enforcement Boundary HREF": response.get("href"),
+            "Name": response.get("name"),
+            "Created At": arg_to_datetime(response["created_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
+            "Updated At": arg_to_datetime(response["updated_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
+            "Ingress Services": ingress_services,
+        }
+    )
+
+    headers = list(hr_outputs[0].keys()) if hr_outputs else []
+    return tableToMarkdown(
+        "Enforcement Boundary:\n", hr_outputs, headers=headers, removeNull=True
+    )
+
+
+def prepare_update_enforcement_mode_output(response: list):
+    """Prepare Human Readable output for enforcement-mode-update command.
+
+    Args:
+        response: Response from the SDK.
+
+    Returns:
+        markdown string to be displayed in the war room.
+    """
+    hr_outputs = []
+    headers = ["Workload HREF", "Status"]
+
+    for resp in response:
+        if resp.get("errors"):
+            hr_outputs.append({"Workload HREF": resp.get("href"), "Status": "Failed"})
+            title = "Enforcement Mode:\n#### Failed to update the enforcement mode."
+        else:
+            hr_outputs.append({"Workload HREF": resp.get("href"), "Status": "Updated"})
+            title = "Enforcement Mode:\n#### Enforcement mode has been updated successfully."
+
+    return tableToMarkdown(title, hr_outputs, headers=headers, removeNull=True)
+
+
+def prepare_ip_list_get_output(response: dict) -> str:
+    """Prepare human-readable output for ip-list-get command.
+
+    Args:
+        response: Response from the SDK.
+
+    Returns:
+        markdown string to be displayed in the war room.
+    """
+    hr_output = {
+        "IP List HREF": response.get("href", ""),
+        "Name": response.get("name", ""),
+        "Created At": arg_to_datetime(response.get("created_at", "")).strftime(HR_DATE_FORMAT),  # type: ignore
+        "Updated At": arg_to_datetime(response.get("updated_at", "")).strftime(HR_DATE_FORMAT),  # type: ignore
+        "FQDNS": response.get('fqdns', [])[0].get('fqdn') if response.get('fqdns') else []
+    }
+
+    headers = list(hr_output.keys())
+    return tableToMarkdown("IP List Details:", hr_output, headers=headers, removeNull=True)
 
 
 """ COMMAND FUNCTIONS """
@@ -398,6 +600,231 @@ def object_provision_command(client: PolicyComputeEngine, args: Dict[str, Any]) 
                           raw_response=response_dict)
 
 
+def workload_get_command(
+    client: PolicyComputeEngine, args: dict[str, Any]
+) -> CommandResults:
+    """Retrieve a workload.
+
+    Args:
+        client: PolicyComputeEngine to use.
+        args: Arguments passed with the command.
+
+    Returns:
+        CommandResult object
+    """
+    href: str | None = args.get("href")
+    validate_required_parameters(href=href)
+
+    response = client.workloads.get_by_reference(href)  # type: ignore
+    results = json.loads(json.dumps(response, cls=IllumioEncoder))
+
+    readable_output = prepare_workload_get_output(results)
+
+    return CommandResults(
+        outputs_prefix="Illumio.Workload",
+        readable_output=readable_output,
+        outputs_key_field="href",
+        outputs=remove_empty_elements(results),
+        raw_response=results,
+    )
+
+
+def workloads_list_command(
+    client: PolicyComputeEngine, args: dict[str, Any]
+) -> CommandResults:
+    """Retrieve the workloads list.
+
+    Args:
+        client: PolicyComputeEngine to use.
+        args: Arguments passed with the command.
+
+    Returns:
+        CommandResult object
+    """
+    max_results = arg_to_number(args.get("max_results", "50"), arg_name="max_results")
+    name = args.get("name")
+    hostname = args.get("hostname")
+    ip_address = args.get("ip_address")
+    online = args.get("online")
+    managed = args.get("managed")
+    labels = args.get("labels")
+    enforcement_mode = args.get("enforcement_mode")
+    visibility_level = args.get("visibility_level")
+
+    validate_workloads_list_arguments(
+        max_results, online, managed, enforcement_mode, visibility_level
+    )
+
+    if labels:
+        labels = json.dumps(list(map(lambda x: [x], argToList(labels))))
+
+    params = {
+        "max_results": max_results,
+        "name": name,
+        "hostname": hostname,
+        "ip_address": ip_address,
+        "online": online,
+        "managed": managed,
+        "labels": labels,
+        "enforcement_mode": enforcement_mode,
+        "visibility_level": visibility_level,
+    }
+    workloads_list = client.workloads.get(params=params)  # type: ignore
+
+    workloads_list_json = [workload.to_json() for workload in workloads_list]
+    readable_output = prepare_workloads_list_output(workloads_list_json)
+
+    return CommandResults(
+        outputs_prefix="Illumio.Workloads",
+        readable_output=readable_output,
+        outputs_key_field="href",
+        raw_response=workloads_list_json,
+        outputs=remove_empty_elements(workloads_list_json),  # type: ignore
+    )
+
+
+def enforcement_boundary_create_command(
+    client: PolicyComputeEngine, args: dict[str, Any]
+) -> CommandResults:
+    """Create an enforcement boundary.
+
+    Args:
+        client: PolicyComputeEngine to use.
+        args: Arguments passed with the command.
+
+    Returns:
+        CommandResult object
+    """
+    name = args.get("name")
+    port = args.get("port")
+    protocol = args.get("protocol", "tcp").lower()
+    providers = args.get("providers")
+    consumers = args.get("consumers")
+
+    validate_required_parameters(
+        name=name, port=port, providers=providers, consumers=consumers
+    )
+    providers = argToList(providers)
+    consumers = argToList(consumers)
+    port = arg_to_number(port, arg_name="port")  # type: ignore
+    validate_enforcement_boundary_create_arguments(port, protocol)  # type: ignore
+    proto = convert_protocol(protocol)
+
+    enforcement_boundary_rule = EnforcementBoundary.build(
+        name=name,
+        consumers=consumers,  # type: ignore
+        providers=providers,  # type: ignore
+        ingress_services=[{"port": port, "proto": proto}],
+    )
+    enforcement_boundary = client.enforcement_boundaries.create(enforcement_boundary_rule)  # type: ignore
+
+    enforcement_boundary_dict = enforcement_boundary.__dict__
+    enforcement_boundary_json = enforcement_boundary.to_json()
+    enforcement_boundary_json["href"] = enforcement_boundary_dict.get("href")
+    enforcement_boundary_json["created_at"] = enforcement_boundary_dict.get(
+        "created_at"
+    )
+    enforcement_boundary_json["updated_at"] = enforcement_boundary_dict.get(
+        "updated_at"
+    )
+    enforcement_boundary_json["deleted_at"] = enforcement_boundary_dict.get(
+        "deleted_at"
+    )
+    enforcement_boundary_json["created_by"] = enforcement_boundary_dict.get(
+        "created_by"
+    )
+    enforcement_boundary_json["updated_by"] = enforcement_boundary_dict.get(
+        "updated_by"
+    )
+    enforcement_boundary_json["deleted_by"] = enforcement_boundary_dict.get(
+        "deleted_by"
+    )
+    enforcement_boundary_json["update_type"] = enforcement_boundary_dict.get(
+        "update_type"
+    )
+    enforcement_boundary_json["caps"] = enforcement_boundary_dict.get("caps")
+
+    readable_output = prepare_enforcement_boundary_create_output(
+        enforcement_boundary_json
+    )
+
+    return CommandResults(
+        outputs_prefix="Illumio.EnforcementBoundary",
+        readable_output=readable_output,
+        outputs_key_field="href",
+        raw_response=enforcement_boundary_json,
+        outputs=remove_empty_elements(enforcement_boundary_json),
+    )
+
+
+def update_enforcement_mode_command(
+    client: PolicyComputeEngine, args: Dict[str, Any]
+) -> CommandResults:
+    """Update enforcement mode for one or more workloads.
+
+    Args:
+        client: PolicyComputeEngine to use.
+        args: arguments obtained from demisto.args()
+
+    Returns:
+        CommandResult object
+    """
+    enforcement_mode: str | None = args.get("enforcement_mode")
+    workloads: list | None = argToList(args.get("workloads"))
+
+    validate_required_parameters(enforcement_mode=enforcement_mode, workloads=workloads)
+
+    enforcement_mode = EnforcementMode(enforcement_mode.lower())  # type: ignore
+    workload = [Workload(href=href, enforcement_mode=enforcement_mode) for href in workloads]  # type: ignore
+
+    response = client.workloads.bulk_update(workload)  # type: ignore
+    results = json.loads(json.dumps(response, cls=IllumioEncoder))
+
+    context_data = []
+    for result in results:
+        if result.get("errors"):
+            context_data.append({"href": result.get("href"), "status": "Fail"})
+        else:
+            context_data.append({"href": result.get("href"), "status": "Update"})
+
+    readable_output = prepare_update_enforcement_mode_output(results)
+
+    return CommandResults(
+        outputs_prefix="Illumio.UpdateStatuses",
+        readable_output=readable_output,
+        outputs_key_field="href",
+        outputs=remove_empty_elements(context_data),
+        raw_response=results,
+    )
+
+
+def ip_list_get_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> CommandResults:
+    """Get the details of the IP List.
+
+    Args:
+        client: PolicyComputeEngine to use.
+        args: arguments obtained from demisto.args()
+
+    Returns:
+        CommandResult object
+    """
+    href = args.get("href")
+    validate_required_parameters(href=href)
+
+    response = client.ip_lists.get_by_reference(href)
+    results = json.loads(json.dumps(response, cls=IllumioEncoder))  # convert the ip_lists objects
+
+    readable_output = prepare_ip_list_get_output(results)
+
+    return CommandResults(
+        outputs_prefix="Illumio.IPList",
+        outputs_key_field="href",
+        outputs=remove_empty_elements(results),
+        readable_output=readable_output,
+        raw_response=results
+    )
+
+
 def main():
     """Parse params and runs command functions."""
     try:
@@ -436,7 +863,12 @@ def main():
                 "illumio-traffic-analysis": traffic_analysis_command,
                 "illumio-virtual-service-create": virtual_service_create_command,
                 "illumio-service-binding-create": service_binding_create_command,
-                "illumio-object-provision": object_provision_command
+                "illumio-object-provision": object_provision_command,
+                "illumio-workload-get": workload_get_command,
+                "illumio-workloads-list": workloads_list_command,
+                "illumio-enforcement-boundary-create": enforcement_boundary_create_command,
+                "illumio-enforcement-mode-update": update_enforcement_mode_command,
+                "illumio-ip-list-get": ip_list_get_command
             }
             if command in illumio_commands:
                 args = demisto.args()
