@@ -127,7 +127,7 @@ script:
       description: Destination workload name
       type: String
     - contextPath: Illumio.TrafficFlows.dst.workload.href
-      description: Destination workload URI
+      description: Destination workload URI.
       type: String
     - contextPath: Illumio.TrafficFlows.dst.workload.os_type
       description: Destination workload OS type.
@@ -151,8 +151,7 @@ script:
       description: Number of traffic flows reported in connections.
       type: Number
     - contextPath: Illumio.TrafficFlows.policy_decisions
-      description: |-
-        Indicates the policy decision for the flow. Indicates if the traffic
+      description: Indicates the policy decision for the flow. Indicates if the traffic
         flow is allowed, potentially blocked (but allowed), or blocked.
       type: String
     - contextPath: Illumio.TrafficFlows.state
@@ -162,14 +161,12 @@ script:
       description: Flow direction of the traffic.
       type: String
     - contextPath: Illumio.TrafficFlows.dst_bi
-      description: |-
-        Bytes received till now by the destination over the flow
-        during the interval.
+      description: Bytes received till now by the destination over the flow during
+        the interval.
       type: Number
     - contextPath: Illumio.TrafficFlows.dst_bo
-      description: |-
-        Bytes sent till now by the destination over the flow
-        during the interval.
+      description: Bytes sent till now by the destination over the flow during the
+        interval.
       type: Number
     - contextPath: Illumio.TrafficFlows.timestamp_range.last_detected
       description: Time range when traffic was last detected.
@@ -263,6 +260,89 @@ script:
       type: Unknown
     - contextPath: Illumio.VirtualService.service_addresses
       description: Service addresses of the virtual service.
+      type: Unknown
+  - arguments:
+    - default: false
+      description: Workload HREFs to bind. Supports comma-separated values.
+      isArray: true
+      name: workloads
+      required: true
+      secret: false
+    - default: false
+      description: Virtual service HREF to bind the workloads to.
+      isArray: false
+      name: virtual_service
+      required: true
+      secret: false
+    deprecated: false
+    description: Binds the existing or a new virtual service to the workloads.
+    execution: false
+    name: illumio-service-binding-create
+    outputs:
+    - contextPath: Illumio.ServiceBinding.status
+      description: Indicates the status of the request.
+      type: String
+    - contextPath: Illumio.ServiceBinding.href
+      description: Label URI.
+      type: String
+  - arguments:
+    - default: false
+      description: List of security policy object HREFs to provision. Supports comma-separated
+        values.
+      isArray: true
+      name: security_policy_objects
+      required: true
+      secret: false
+    deprecated: false
+    description: A utility method for provisioning policy objects from draft to active
+      state. Policy objects only affect the network once they've been provisioned.
+    execution: false
+    name: illumio-object-provision
+    outputs:
+    - contextPath: Illumio.PolicyState.href
+      description: Object Label URI.
+      type: String
+    - contextPath: Illumio.PolicyState.commit_message
+      description: Message for the provisioning.
+      type: String
+    - contextPath: Illumio.PolicyState.version
+      description: Version of the object.
+      type: Number
+    - contextPath: Illumio.PolicyState.workloads_affected
+      description: Number of workloads affected.
+      type: Number
+    - contextPath: Illumio.PolicyState.created_by.href
+      description: Created by label URI.
+      type: String
+    - contextPath: Illumio.PolicyState.object_counts.rule_sets
+      description: Count of rulesets.
+      type: Number
+    - contextPath: Illumio.PolicyState.object_counts.services
+      description: Count of services.
+      type: Number
+    - contextPath: Illumio.PolicyState.object_counts.ip_lists
+      description: Count of IP lists.
+      type: Number
+    - contextPath: Illumio.PolicyState.object_counts.firewall_settings
+      description: Count of firewall settings.
+      type: Number
+    - contextPath: Illumio.PolicyState.object_counts.label_groups
+      description: Count of label groups.
+      type: Number
+    - contextPath: Illumio.PolicyState.object_counts.secure_connect_gateways
+      description: Count of secure connection gateways.
+      type: Number
+    - contextPath: Illumio.PolicyState.object_counts.virtual_servers
+      description: Count of virtual servers.
+      type: Number
+    - contextPath: Illumio.PolicyState.object_counts.enforcement_boudaries
+      description: Count og enforcement boundaries.
+      type: Number
+    - contextPath: Illumio.PolicyState.object_counts.virtual_services
+      description: Count of virtual services.
+      type: Number
+    - contextPath: Illumio.PolicyState.provisioned_hrefs
+      description: List of active hrefs after provisioning.
       type: Unknown
   dockerimage: dev-illumio:1.0.0
   feed: false

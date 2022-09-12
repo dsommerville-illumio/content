@@ -1,16 +1,23 @@
 """Test file for Illumio Integration."""
 
 import io
+import re
 
 import pytest
 import illumio
-from illumio import TrafficFlow
+from illumio import TrafficFlow, ServiceBinding, Workload, IllumioApiException, PolicyVersion, PolicyComputeEngine, \
+    VirtualService
 
 from CommonServerPython import *  # noqa
-from IllumioCore import *
+from IllumioCore import test_module, InvalidValueError, VALID_POLICY_DECISIONS, VALID_PROTOCOLS, \
+    traffic_analysis_command, prepare_traffic_analysis_output, virtual_service_create_command, \
+    prepare_virtual_service_output, service_binding_create_command, prepare_service_binding_output, \
+    object_provision_command, prepare_object_provision_output
 
 """ CONSTANTS """
 
+WORKLOAD_EXP_URL = "/orgs/1/workloads/dummy"
+VIRTUAL_SERVICE_EXP_URL = "/orgs/1/sec_policy/active/virtual_services/dummy"
 TEST_DATA_DIRECTORY = os.path.join(os.path.dirname(os.path.realpath(__file__)), "test_data")
 INVALID_PORT_NUMBER_CREATE_VIRTUAL_SERVICE_EXCEPTION_MESSAGE = (
     "{} is an invalid value for port. Value must be in 1 to 65535 or -1.")
@@ -84,6 +91,48 @@ def virtual_service_success_udp_hr():
     ) as f:
         expected_hr_output = f.read()
     return expected_hr_output
+
+
+@pytest.fixture(scope="module")
+def service_binding_success():
+    """Retrieve the json response for service binding."""
+    return util_load_json(
+        os.path.join(TEST_DATA_DIRECTORY, "create_service_binding_success_resp.json")
+    )
+
+
+@pytest.fixture(scope="module")
+def service_binding_success_hr():
+    """Retrieve the human-readable for service binding."""
+    with open(
+            os.path.join(
+                TEST_DATA_DIRECTORY, "create_service_binding_success_response_hr.md"
+            )
+    ) as f:
+        expected_hr_output = f.read()
+    return expected_hr_output
+
+
+@pytest.fixture(scope="module")
+def object_provision_success():
+    """Retrieve the json response for object provision."""
+    return util_load_json(
+        os.path.join(TEST_DATA_DIRECTORY, "object_provision_success.json")
+    )
+
+
+@pytest.fixture(scope="module")
+def object_provision_success_hr():
+    """Retrieve the human-readable for object provision."""
+    with open(os.path.join(TEST_DATA_DIRECTORY, "object_provision_success.md")) as f:
+        expected_hr_output = f.read()
+    return expected_hr_output
+
+
+@pytest.fixture(scope="module")
+def service_binding_reference_success():
+    return util_load_json(
+        os.path.join(TEST_DATA_DIRECTORY, "create_virtual_service_success_response.json"))
 
 
 def test_test_module(requests_mock, mock_client):
@@ -218,7 +267,7 @@ def test_traffic_analysis_human_readable(traffic_analysis_create_success, traffi
     When:
         - Calling `traffic_analysis_Command` function
     Then:
-        - Returns a valid human-readable.
+        - Returns a valid human-readable
     """
     resp = prepare_traffic_analysis_output(traffic_analysis_create_success)
     assert resp == traffic_analysis_create_success_hr
@@ -229,11 +278,11 @@ def test_virtual_service_create_command_for_success(mock_client, virtual_service
     """Test case scenario for execution of virtual-service-create-command when valid and all arguments are provided.
 
     Given:
-        - virtual_service_create_command function and mock_client to call the function.
+        - virtual_service_create_command function and mock_client to call the function
     When:
-        - Valid name, port, and protocol are provided in the command argument.
+        - Valid name, port, and protocol are provided in the command argument
     Then:
-        - Should return proper raw_response.
+        - Returns a valid raw_response
     """
     monkeypatch.setattr(illumio.pce.PolicyComputeEngine._PCEObjectAPI, "create",
                         lambda *a: VirtualService.from_json(virtual_service_create_success))
@@ -246,11 +295,11 @@ def test_virtual_service_create_command_for_human_readable(virtual_service_creat
     """Test case scenario for execution of virtual-service-create-command when valid and all arguments are provided.
 
     Given:
-        - virtual_service_create_command function and mock_client to call the function.
+        - virtual_service_create_command function and mock_client to call the function
     When:
-        - Valid name, port, and protocol are provided in the command argument.
+        - Valid name, port, and protocol are provided in the command argument
     Then:
-        - Should return proper raw_response.
+        - Returns a valid human-readable
     """
     resp = prepare_virtual_service_output(virtual_service_create_success)
     assert resp == virtual_service_success_hr
@@ -266,7 +315,7 @@ def test_virtual_service_create_command_for_success_with_protocol_as_udp(mock_cl
     When:
         - Valid name, port, and protocol are provided in the command argument.
     Then:
-        - Should return raw_response.
+        - Return a valid raw_response
     """
     monkeypatch.setattr(illumio.pce.PolicyComputeEngine._PCEObjectAPI, "create",
                         lambda *a: VirtualService.from_json(virtual_service_create_success_udp))
@@ -280,11 +329,11 @@ def test_virtual_service_create_command_for_human_readable_with_protocol_as_udp(
     """Test case scenario for execution of virtual-service-create-command with protocol as udp.
 
     Given:
-        - virtual_service_create_command function and mock_client to call the function.
+        - virtual_service_create_command function and mock_client to call the function
     When:
-        - Valid name, port, and protocol are provided in the command argument.
+        - Valid name, port, and protocol are provided in the command argument
     Then:
-        - Should return proper human-readable string.
+        - Returns a valid human-readable
     """
     resp = prepare_virtual_service_output(virtual_service_create_success_udp)
     assert resp == virtual_service_success_udp_hr
@@ -294,11 +343,11 @@ def test_virtual_service_create_command_for_existing_virtual_service(requests_mo
     """Test case scenario for virtual-service-create-command with existing virtual service.
 
     Given:
-        - virtual_service_create_command function and mock_client to call the function.
+        - virtual_service_create_command function and mock_client to call the function
     When:
-        - Virtual service already exists.
+        - Virtual service already exists
     Then:
-        - Should raise exception with proper error message.
+        - Should raise exception with proper error message
     """
     requests_mock.post(
         re.compile("/sec_policy/draft/virtual_services"), status_code=406,
@@ -338,3 +387,180 @@ def test_virtual_service_create_command_when_invalid_arguments_provided(err_msg,
     with pytest.raises(err_type) as err:
         virtual_service_create_command(mock_client, args)
         assert str(err.value) == err_msg
+
+
+def test_service_binding_create_command_for_success(mock_client, service_binding_success, monkeypatch,
+                                                    service_binding_reference_success):
+    """Test case scenario for successful execution of service-binding-create.
+
+    Given:
+        - create_service_binding_command function and mock_client to call the function
+    When:
+        - Valid virtual service href and valid list of workloads href are provided in the command argument
+    Then:
+        - Returns a valid raw_response
+    """
+
+    monkeypatch.setattr(
+        illumio.pce.PolicyComputeEngine._PCEObjectAPI,
+        "create",
+        lambda *a: ServiceBinding.from_json(service_binding_success),
+    )
+
+    monkeypatch.setattr(illumio.pce.PolicyComputeEngine._PCEObjectAPI, "get_by_reference",
+                        lambda *a: PolicyVersion.from_json(service_binding_reference_success))
+
+    args = {"workloads": WORKLOAD_EXP_URL, "virtual_service": VIRTUAL_SERVICE_EXP_URL}
+    resp = service_binding_create_command(mock_client, args)
+    assert resp.raw_response == service_binding_success
+
+
+def test_service_binding_create_command_for_human_readable(service_binding_success_hr):
+    """Test case scenario for successful execution of service-binding-create-command.
+
+    Given:
+        - create_service_binding_command function and mock_client to call the function
+    When:
+        - Valid virtual service href and valid list of workloads href are provided in the command argument
+    Then:
+        - Returns a valid human-readable
+    """
+    create_service_binding_expected_resp_output = util_load_json(
+        os.path.join(
+            TEST_DATA_DIRECTORY, "create_service_binding_success_response_output.json"
+        )
+    )
+
+    response = prepare_service_binding_output(
+        create_service_binding_expected_resp_output
+    )
+    assert response == service_binding_success_hr
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ({"workloads": "abc", "virtual_service": VIRTUAL_SERVICE_EXP_URL}),
+        ({"workloads": WORKLOAD_EXP_URL, "virtual_service": "abc"}),
+    ],
+)
+def test_service_binding_create_when_invalid_arguments_provided(
+        args, mock_client, requests_mock
+):
+    """Test case scenario when arguments provided to service-binding-create are invalid.
+
+    Given:
+        - command arguments for service-binding command
+    When:
+        - Calling `service_binding_create_command` function
+    Then:
+        - Returns a valid error message
+    """
+    requests_mock.post(
+        re.compile("/service_bindings"),
+        status_code=406,
+        json=[{"token": "invalid_uri", "message": "Invalid URI: {abc}"}],
+    )
+
+    with pytest.raises(Exception) as err:
+        service_binding_create_command(mock_client, args)
+
+        assert (
+                str(err.value) == "406 Client Error: None for url: https://127.0.0.1:8443/api/v2/orgs/1/service_bindings"
+        )
+
+
+@pytest.mark.parametrize(
+    "err_msg, args",
+    [
+        (
+                MISSING_REQUIRED_PARAM_EXCEPTION_MESSAGE.format("workloads"),
+                {"workloads": "", "virtual_service": VIRTUAL_SERVICE_EXP_URL},
+        ),
+        (
+                MISSING_REQUIRED_PARAM_EXCEPTION_MESSAGE.format("virtual_service"),
+                {"workloads": WORKLOAD_EXP_URL, "virtual_service": ""},
+        ),
+    ],
+)
+def test_create_service_binding_when_blank_arguments_provided(
+        err_msg, args, mock_client
+):
+    """Test case scenario when arguments provided to service-binding-create are blank.
+
+    Given:
+        - command arguments for service-binding-create command
+    When:
+        - Calling `service_binding_create_command` function
+    Then:
+        - Returns a valid error message
+    """
+    with pytest.raises(Exception) as err:
+        service_binding_create_command(mock_client, args)
+
+        assert str(err.value) == err_msg
+
+
+def test_object_provision_command_when_invalid_arguments_provided(mock_client):
+    """
+    Test case scenario for execution of object-provision-command when invalid arguments are provided.
+
+    Given:
+        - object_provision_command function and mock_client to call the function
+    When:
+        - Invalid arguments (Empty values) provided in the arguments
+    Then:
+        - Should raise ValueError with proper error message
+    """
+    from IllumioCore import object_provision_command
+
+    args = {"security_policy_objects": ""}
+    err_msg = (
+        "security_policy_objects is a required parameter. Please provide correct value."
+    )
+
+    with pytest.raises(ValueError) as err:
+        object_provision_command(mock_client, args)
+
+    assert str(err.value) == err_msg
+
+
+def test_object_provision_command_when_valid_arguments_provided(
+        mock_client, object_provision_success, monkeypatch
+):
+    """
+    Test case scenario for execution of object-provision-command when valid arguments are provided.
+
+    Given:
+        - object_provision_command function and mock_client to call the function
+    When:
+        - Valid href is provided in the command argument
+    Then:
+        - Should return proper raw_response
+    """
+    monkeypatch.setattr(
+        illumio.pce.PolicyComputeEngine,
+        "provision_policy_changes",
+        lambda *a, **k: PolicyVersion.from_json(object_provision_success),
+    )
+    mock_args = {"security_policy_objects": "/orgs/1/sec_policy/draft/rule_sets/1605"}
+    response = object_provision_command(mock_client, mock_args)
+
+    assert response.raw_response == object_provision_success
+
+
+def test_object_provision_command_when_valid_arguments_provided_human_readable(
+        mock_client, object_provision_success, object_provision_success_hr
+):
+    """
+    Test case scenario for execution of object-provision-command when valid arguments are provided.
+
+    Given:
+        - object_provision_command function and mock_client to call the function
+    When:
+        - Valid href is provided in the command argument
+    Then:
+        - Returns a valid human-readable
+    """
+    resp = prepare_object_provision_output(object_provision_success)
+    assert resp == object_provision_success_hr
