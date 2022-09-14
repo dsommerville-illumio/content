@@ -1,13 +1,14 @@
 """Implementation file for IllumioCore Integration."""
+import json
+from typing import Dict, List, Any, Union
 from enum import Enum
-
-import urllib3
 from datetime import datetime
-from illumio import PolicyComputeEngine, IllumioEncoder, convert_draft_href_to_active, IllumioException, \
+import urllib3
+from illumio import PolicyComputeEngine, convert_draft_href_to_active, IllumioException, Workload, IllumioEncoder, \
     EnforcementBoundary
-from illumio.explorer import TrafficQuery, Workload
-from illumio.policyobjects import VirtualService, ServicePort, ServiceBinding, Reference
-from illumio.util import convert_protocol, EnforcementMode
+from illumio.explorer import TrafficQuery
+from illumio.policyobjects import VirtualService, ServicePort, ServiceBinding
+from illumio.util import convert_protocol, EnforcementMode, Reference
 import demistomock as demisto
 from CommonServerPython import *  # noqa # pylint: disable=unused-wildcard-import
 from CommonServerUserPython import *  # noqa
@@ -94,7 +95,9 @@ def generate_change_description_for_object_provision(hrefs: List[str]) -> str:
         datetime.now().astimezone(timezone.utc).isoformat()[:-6], ', '.join(hrefs))
 
 
-def validate_traffic_analysis_arguments(port: Optional[int], policy_decisions: list, protocol: str) -> None:
+def validate_traffic_analysis_arguments(
+    port: Optional[int], policy_decisions: List, protocol: str
+) -> None:
     """Validate arguments for traffic-analysis command.
 
     Args:
@@ -113,7 +116,7 @@ def validate_traffic_analysis_arguments(port: Optional[int], policy_decisions: l
         raise InvalidValueError("protocol", protocol, VALID_PROTOCOLS)
 
 
-def validate_virtual_service_arguments(port: int | None, protocol: str) -> None:
+def validate_virtual_service_arguments(port: int, protocol: str) -> None:
     """Validate arguments for virtual-service-create command.
 
     Args:
@@ -188,8 +191,8 @@ def validate_enforcement_boundary_create_arguments(
         raise InvalidValueError("protocol", protocol, VALID_PROTOCOLS)
 
 
-def prepare_traffic_analysis_output(response: list) -> str:
-    """Prepare Human Readable output for traffic-analysis-command.
+def prepare_traffic_analysis_output(response: List) -> str:
+    """Prepare human-readable output for traffic-analysis-command.
 
     Args:
         response: Response from the SDK.
@@ -221,7 +224,7 @@ def prepare_traffic_analysis_output(response: list) -> str:
     return tableToMarkdown("Traffic Analysis:", hr_output, headers=headers, removeNull=True)
 
 
-def prepare_virtual_service_output(response: dict) -> str:
+def prepare_virtual_service_output(response: Dict) -> str:
     """Prepare human-readable output for virtual-service-create command.
 
     Args:
@@ -247,7 +250,7 @@ def prepare_virtual_service_output(response: dict) -> str:
     return tableToMarkdown(title, hr_output, headers=headers, removeNull=True)
 
 
-def prepare_service_binding_output(response: dict) -> str:
+def prepare_service_binding_output(response: Dict) -> str:
     """Prepare human-readable output for service-binding-create command.
 
     Args:
@@ -296,7 +299,7 @@ def prepare_object_provision_output(response: Dict[str, Any]) -> str:
                            removeNull=True)
 
 
-def prepare_workload_get_output(response: dict) -> str:
+def prepare_workload_get_output(response: Dict) -> str:
     """Prepare human-readable output for workload-get command.
 
     Args:
@@ -305,11 +308,10 @@ def prepare_workload_get_output(response: dict) -> str:
     Returns:
         markdown string to be displayed in the war room.
     """
-    hr_outputs = []
+    hr_outputs = {}
     title = "Workload Details:"
 
-    hr_outputs.append(
-        {
+    hr_outputs = {
             "Workload HREF": response.get("href"),
             "Name": response.get("name"),
             "Description": response.get("description"),
@@ -317,13 +319,12 @@ def prepare_workload_get_output(response: dict) -> str:
             "Updated At": arg_to_datetime(response["updated_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
             "Hostname": response.get("hostname"),
         }
-    )
 
-    headers = list(hr_outputs[0].keys()) if hr_outputs else []
+    headers = list(hr_outputs.keys())
     return tableToMarkdown(title, hr_outputs, headers=headers, removeNull=True)
 
 
-def prepare_workloads_list_output(workloads_list: list) -> str:
+def prepare_workloads_list_output(workloads_list: List) -> str:
     """Prepare human-readable output for workloads-list command.
 
     Args:
@@ -352,7 +353,7 @@ def prepare_workloads_list_output(workloads_list: list) -> str:
     return tableToMarkdown("Workloads:\n", hr_outputs, headers=headers, removeNull=True)
 
 
-def prepare_enforcement_boundary_create_output(response: dict) -> str:
+def prepare_enforcement_boundary_create_output(response: Dict) -> str:
     """Prepare human-readable output for enforcement-boundary-create command.
 
     Args:
@@ -361,7 +362,6 @@ def prepare_enforcement_boundary_create_output(response: dict) -> str:
     Returns:
         markdown string to be displayed in the war room.
     """
-    hr_outputs = []
     ingress_services = []
 
     for ingress_service in response.get("ingress_services", []):
@@ -377,23 +377,23 @@ def prepare_enforcement_boundary_create_output(response: dict) -> str:
         if ingress_service_formatted:
             ingress_services.append(ingress_service_formatted)
 
-    hr_outputs.append(
-        {
+    hr_outputs = {
             "Enforcement Boundary HREF": response.get("href"),
             "Name": response.get("name"),
-            "Created At": arg_to_datetime(response["created_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
-            "Updated At": arg_to_datetime(response["updated_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
+            "Created At": None if not response.get("created_at") else arg_to_datetime(  # type: ignore
+                response["created_at"]).strftime(HR_DATE_FORMAT),
+            "Updated At": None if not response.get("updated_at") else arg_to_datetime(  # type: ignore
+                response["updated_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
             "Ingress Services": ingress_services,
         }
-    )
 
-    headers = list(hr_outputs[0].keys()) if hr_outputs else []
+    headers = list(hr_outputs.keys())
     return tableToMarkdown(
         "Enforcement Boundary:\n", hr_outputs, headers=headers, removeNull=True
     )
 
 
-def prepare_update_enforcement_mode_output(response: list):
+def prepare_update_enforcement_mode_output(response: List):
     """Prepare Human Readable output for enforcement-mode-update command.
 
     Args:
@@ -404,19 +404,24 @@ def prepare_update_enforcement_mode_output(response: list):
     """
     hr_outputs = []
     headers = ["Workload HREF", "Status"]
+    successful_update_count = 0
+    failed_update_count = 0
 
     for resp in response:
         if resp.get("errors"):
+            failed_update_count += 1
             hr_outputs.append({"Workload HREF": resp.get("href"), "Status": "Failed"})
-            title = "Enforcement Mode:\n#### Failed to update the enforcement mode."
         else:
+            successful_update_count += 1
             hr_outputs.append({"Workload HREF": resp.get("href"), "Status": "Updated"})
-            title = "Enforcement Mode:\n#### Enforcement mode has been updated successfully."
+
+    title = "Workload Enforcement Update:\n#### Successfully updated enforcement " \
+            "mode for {} workloads, {} workloads failed to update".format(successful_update_count, failed_update_count)
 
     return tableToMarkdown(title, hr_outputs, headers=headers, removeNull=True)
 
 
-def prepare_ip_list_get_output(response: dict) -> str:
+def prepare_ip_list_get_output(response: Dict) -> str:
     """Prepare human-readable output for ip-list-get command.
 
     Args:
@@ -428,16 +433,15 @@ def prepare_ip_list_get_output(response: dict) -> str:
     hr_output = {
         "IP List HREF": response.get("href", ""),
         "Name": response.get("name", ""),
-        "Created At": arg_to_datetime(response.get("created_at", "")).strftime(HR_DATE_FORMAT),  # type: ignore
-        "Updated At": arg_to_datetime(response.get("updated_at", "")).strftime(HR_DATE_FORMAT),  # type: ignore
-        "FQDNS": response.get('fqdns', [])[0].get('fqdn') if response.get('fqdns') else []
+        "Created At": None if not response.get("created_at") else arg_to_datetime(  # type: ignore
+            response.get("created_at")).strftime(HR_DATE_FORMAT),
+        "Updated At": None if not response.get("updated_at") else arg_to_datetime(  # type: ignore
+            response.get("updated_at", "")).strftime(HR_DATE_FORMAT),
+        "FQDNS": response.get('fqdns')[0].get('fqdn') if response.get('fqdns') else []
     }
 
     headers = list(hr_output.keys())
     return tableToMarkdown("IP List Details:", hr_output, headers=headers, removeNull=True)
-
-
-""" COMMAND FUNCTIONS """
 
 
 def test_module(client: PolicyComputeEngine) -> str:
@@ -455,6 +459,9 @@ def test_module(client: PolicyComputeEngine) -> str:
     if response:
         return "ok"
     raise ValueError("Failed to establish connection with provided credentials.")
+
+
+""" COMMAND FUNCTIONS """
 
 
 def traffic_analysis_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> CommandResults:
@@ -528,7 +535,7 @@ def virtual_service_create_command(client: PolicyComputeEngine, args: Dict[str, 
     )
 
 
-def service_binding_create_command(client: PolicyComputeEngine, args: dict[str, Any]) -> CommandResults:
+def service_binding_create_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> CommandResults:
     """Create a service binding.
 
     Args:
@@ -574,7 +581,7 @@ def object_provision_command(client: PolicyComputeEngine, args: Dict[str, Any]) 
 
     Args:
         client: Client object to be used.
-        args: Arguments passed with the command.
+        args: arguments obtained from demisto.args()
 
     Returns:
         Standard command results.
@@ -601,18 +608,18 @@ def object_provision_command(client: PolicyComputeEngine, args: Dict[str, Any]) 
 
 
 def workload_get_command(
-    client: PolicyComputeEngine, args: dict[str, Any]
+    client: PolicyComputeEngine, args: Dict[str, Any]
 ) -> CommandResults:
     """Retrieve a workload.
 
     Args:
         client: PolicyComputeEngine to use.
-        args: Arguments passed with the command.
+        args: arguments obtained from demisto.args()
 
     Returns:
         CommandResult object
     """
-    href: str | None = args.get("href")
+    href = args.get("href")
     validate_required_parameters(href=href)
 
     response = client.workloads.get_by_reference(href)  # type: ignore
@@ -630,13 +637,13 @@ def workload_get_command(
 
 
 def workloads_list_command(
-    client: PolicyComputeEngine, args: dict[str, Any]
+    client: PolicyComputeEngine, args: Dict[str, Any]
 ) -> CommandResults:
     """Retrieve the workloads list.
 
     Args:
         client: PolicyComputeEngine to use.
-        args: Arguments passed with the command.
+        args: arguments obtained from demisto.args()
 
     Returns:
         CommandResult object
@@ -656,7 +663,7 @@ def workloads_list_command(
     )
 
     if labels:
-        labels = json.dumps(list(map(lambda x: [x], argToList(labels))))
+        labels = json.dumps([argToList(labels)])
 
     params = {
         "max_results": max_results,
@@ -684,13 +691,13 @@ def workloads_list_command(
 
 
 def enforcement_boundary_create_command(
-    client: PolicyComputeEngine, args: dict[str, Any]
+    client: PolicyComputeEngine, args: Dict[str, Any]
 ) -> CommandResults:
     """Create an enforcement boundary.
 
     Args:
         client: PolicyComputeEngine to use.
-        args: Arguments passed with the command.
+        args: arguments obtained from demisto.args()
 
     Returns:
         CommandResult object
@@ -718,31 +725,7 @@ def enforcement_boundary_create_command(
     )
     enforcement_boundary = client.enforcement_boundaries.create(enforcement_boundary_rule)  # type: ignore
 
-    enforcement_boundary_dict = enforcement_boundary.__dict__
     enforcement_boundary_json = enforcement_boundary.to_json()
-    enforcement_boundary_json["href"] = enforcement_boundary_dict.get("href")
-    enforcement_boundary_json["created_at"] = enforcement_boundary_dict.get(
-        "created_at"
-    )
-    enforcement_boundary_json["updated_at"] = enforcement_boundary_dict.get(
-        "updated_at"
-    )
-    enforcement_boundary_json["deleted_at"] = enforcement_boundary_dict.get(
-        "deleted_at"
-    )
-    enforcement_boundary_json["created_by"] = enforcement_boundary_dict.get(
-        "created_by"
-    )
-    enforcement_boundary_json["updated_by"] = enforcement_boundary_dict.get(
-        "updated_by"
-    )
-    enforcement_boundary_json["deleted_by"] = enforcement_boundary_dict.get(
-        "deleted_by"
-    )
-    enforcement_boundary_json["update_type"] = enforcement_boundary_dict.get(
-        "update_type"
-    )
-    enforcement_boundary_json["caps"] = enforcement_boundary_dict.get("caps")
 
     readable_output = prepare_enforcement_boundary_create_output(
         enforcement_boundary_json
@@ -769,8 +752,8 @@ def update_enforcement_mode_command(
     Returns:
         CommandResult object
     """
-    enforcement_mode: str | None = args.get("enforcement_mode")
-    workloads: list | None = argToList(args.get("workloads"))
+    enforcement_mode = args.get("enforcement_mode")
+    workloads = argToList(args.get("workloads"))
 
     validate_required_parameters(enforcement_mode=enforcement_mode, workloads=workloads)
 
@@ -783,9 +766,9 @@ def update_enforcement_mode_command(
     context_data = []
     for result in results:
         if result.get("errors"):
-            context_data.append({"href": result.get("href"), "status": "Fail"})
+            context_data.append({"href": result.get("href"), "status": "Failed"})
         else:
-            context_data.append({"href": result.get("href"), "status": "Update"})
+            context_data.append({"href": result.get("href"), "status": "Updated"})
 
     readable_output = prepare_update_enforcement_mode_output(results)
 

@@ -1,37 +1,5 @@
-{
-    "href": "/orgs/1/sec_policy/draft/enforcement_boundaries/981",
-    "created_at": "2022-08-09T04:53:25.420Z",
-    "updated_at": "2022-08-09T04:53:25.431Z",
-    "deleted_at": null,
-    "created_by": {
-        "href": "/users/68"
-    },
-    "updated_by": {
-        "href": "/users/68"
-    },
-    "deleted_by": null,
-    "update_type": "create",
-    "name": "test_enforcement_boundary_1",
-    "providers": [
-        {
-            "label": {
-                "href": "/orgs/1/labels/1"
-            }
-        }
-    ],
-    "consumers": [
-        {
-            "actors": "ams"
-        }
-    ],
-    "ingress_services": [
-        {
-            "port": 1,
-            "proto": 17
-        }
-    ],
-    "caps": [
-        "write",
-        "provision"
-    ]
-}
+{"consumers": [{"actors": "ams"}],
+ "href": "/orgs/1/sec_policy/draft/enforcement_boundaries/981",
+ "ingress_services": [{"port": 1, "proto": 17}],
+ "name": "test_enforcement_boundary_1",
+ "providers": [{"label": {"href": "/orgs/1/labels/1"}}]}

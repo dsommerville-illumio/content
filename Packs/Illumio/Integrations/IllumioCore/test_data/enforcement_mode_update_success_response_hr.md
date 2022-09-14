@@ -1,5 +1,5 @@
-### Enforcement Mode:
-#### Enforcement mode has been updated successfully.
+### Workload Enforcement Update:
+#### Successfully updated enforcement mode for 2 workloads, 0 workloads failed to update
 |Workload HREF|Status|
 |---|---|
 | /orgs/1/workloads/dummy | Updated |

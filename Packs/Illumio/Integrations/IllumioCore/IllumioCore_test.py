@@ -20,7 +20,7 @@ from IllumioCore import test_module, InvalidValueError, VALID_POLICY_DECISIONS, 
 """ CONSTANTS """
 
 WORKLOAD_EXP_URL = "/orgs/1/workloads/dummy"
-WORKLOAD_URL = "https://127.0.0.1:8443/api/v2/orgs/1/workloads"
+WORKLOAD_URL = re.compile("/orgs/1/workloads")
 VIRTUAL_SERVICE_EXP_URL = "/orgs/1/sec_policy/active/virtual_services/dummy"
 TEST_DATA_DIRECTORY = os.path.join(os.path.dirname(os.path.realpath(__file__)), "test_data")
 INVALID_PORT_NUMBER_CREATE_VIRTUAL_SERVICE_EXCEPTION_MESSAGE = (
@@ -35,7 +35,7 @@ INVALID_BOOLEAN_EXCEPTION_MESSAGE = "Argument does not contain a valid boolean-l
 INVALID_MAX_RESULTS_EXCEPTION_MESSAGE = "{} is an invalid value for max results. Max results must be between 0 and 500"
 INVALID_VALUE_EXCEPTION_MESSAGE = "{} is an invalid for {}."
 INVALID_HREF_ENFORCEMENT_BOUNDARY = "Invalid HREF in policy provision changeset: {}"
-UPDATE_WORKLOAD_URL = "https://127.0.0.1:8443/api/v2/orgs/1/workloads/bulk_update"
+UPDATE_WORKLOAD_URL = re.compile("/orgs/1/workloads/bulk_update")
 
 
 @pytest.fixture
@@ -257,9 +257,9 @@ def ip_list_get_success_hr():
     return expected_hr_output
 
 
-def test_test_module(requests_mock, mock_client):
+def test_test_module(mock_client, monkeypatch):
     """
-    Test case scenario for successful execution of test_module.
+    Test case scenario for successful execution of test-module.
 
     Given:
        - mocked client.
@@ -268,8 +268,7 @@ def test_test_module(requests_mock, mock_client):
     Then:
        - Returns an ok message.
     """
-    requests_mock.get(re.compile("/health"),
-                      status_code=200, json={})
+    monkeypatch.setattr(illumio.pce.PolicyComputeEngine, "check_connection", lambda *a: True)
     assert test_module(mock_client) == "ok"
 
 
