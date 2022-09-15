@@ -116,7 +116,7 @@ def validate_traffic_analysis_arguments(
         raise InvalidValueError("protocol", protocol, VALID_PROTOCOLS)
 
 
-def validate_virtual_service_arguments(port: int, protocol: str) -> None:
+def validate_virtual_service_arguments(port: Optional[int], protocol: str) -> None:
     """Validate arguments for virtual-service-create command.
 
     Args:
@@ -437,7 +437,8 @@ def prepare_ip_list_get_output(response: Dict) -> str:
             response.get("created_at")).strftime(HR_DATE_FORMAT),
         "Updated At": None if not response.get("updated_at") else arg_to_datetime(  # type: ignore
             response.get("updated_at", "")).strftime(HR_DATE_FORMAT),
-        "FQDNS": response.get('fqdns')[0].get('fqdn') if response.get('fqdns') else []
+        "IP Ranges": ", ".join([ip_list.get("from_ip") for ip_list in response.get("ip_ranges")]),
+        "FQDNs": ", ".join([fqdn_rec["fqdn"] for fqdn_rec in response.get("fqdns", [])])
     }
 
     headers = list(hr_output.keys())
@@ -648,7 +649,7 @@ def workloads_list_command(
     Returns:
         CommandResult object
     """
-    max_results = arg_to_number(args.get("max_results", "50"), arg_name="max_results")
+    max_results = arg_to_number(args.get("max_results", "500"), arg_name="max_results")
     name = args.get("name")
     hostname = args.get("hostname")
     ip_address = args.get("ip_address")

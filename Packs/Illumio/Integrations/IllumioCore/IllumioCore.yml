@@ -702,7 +702,7 @@ script:
       type: String
   - arguments:
     - default: false
-      defaultValue: '50'
+      defaultValue: '500'
       description: |-
         Maximum number of workloads to return in the result set. The value must be positive integer. High value will result in performance issue.
         Note: 2500 is the optimum value.
