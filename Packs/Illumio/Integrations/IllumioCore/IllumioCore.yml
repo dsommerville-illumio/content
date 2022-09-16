@@ -1282,7 +1282,7 @@ script:
     execution: false
     name: illumio-ip-list-get
     outputs:
-    - contextPath: illumio.IPList.href
+    - contextPath: Illumio.IPList.href
       description: URI of th IP list.
       type: String
     - contextPath: Illumio.IPList.description
@@ -1306,7 +1306,7 @@ script:
     - contextPath: Illumio.IPList.created_by.href
       description: User who originally created this IP List.
       type: String
-    - contextPath: Illumio.IPList.update_by.href
+    - contextPath: Illumio.IPList.updated_by.href
       description: User who last updated this IP List.
       type: String
     - contextPath: Illumio.IPList.deleted_by.href
