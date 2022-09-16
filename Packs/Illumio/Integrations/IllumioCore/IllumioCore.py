@@ -437,7 +437,9 @@ def prepare_ip_list_get_output(response: Dict) -> str:
             response.get("created_at")).strftime(HR_DATE_FORMAT),
         "Updated At": None if not response.get("updated_at") else arg_to_datetime(  # type: ignore
             response.get("updated_at", "")).strftime(HR_DATE_FORMAT),
-        "IP Ranges": ", ".join([ip_list.get("from_ip") for ip_list in response.get("ip_ranges")]),
+        "IP Ranges": ", ".join(
+            [ip_range.get("from_ip") + (" - " + ip_range["to_ip"] if ip_range.get("to_ip") else "") for ip_range in
+             response.get("ip_ranges", [])]),
         "FQDNs": ", ".join([fqdn_rec["fqdn"] for fqdn_rec in response.get("fqdns", [])])
     }
 
