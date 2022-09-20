@@ -5,7 +5,7 @@ import re
 
 import pytest
 import illumio
-from illumio import TrafficFlow, ServiceBinding, Workload, IllumioApiException, PolicyVersion, PolicyComputeEngine, \
+from illumio import TrafficFlow, ServiceBinding, Workload, PolicyVersion, PolicyComputeEngine, \
     VirtualService, IllumioException, EnforcementBoundary, IPList, Rule, RuleSet
 
 from CommonServerPython import *  # noqa
@@ -1249,7 +1249,7 @@ def test_ip_lists_get_command_for_success(mock_client, ip_lists_success, monkeyp
     """
     monkeypatch.setattr(
         illumio.pce.PolicyComputeEngine._PCEObjectAPI,
-        "get_all",
+        "get",
         lambda *a, **k: [IPList.from_json(ip_list) for ip_list in ip_lists_success],
     )
     resp = ip_lists_get_command(
@@ -1257,7 +1257,7 @@ def test_ip_lists_get_command_for_success(mock_client, ip_lists_success, monkeyp
         {
             "max_results": "1",
             "fqdn": "app",
-            "ip_address": "1",
+            "ip_address": "127.0.0.1",
             "name": "a",
             "description": "a",
         },

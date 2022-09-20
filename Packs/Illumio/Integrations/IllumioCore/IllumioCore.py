@@ -1,5 +1,6 @@
 """Implementation file for IllumioCore Integration."""
 import json
+import re
 from typing import Dict, List, Any
 from enum import Enum
 from datetime import datetime
@@ -28,6 +29,7 @@ SUPPORTED_VISIBILITY_LEVEL = ["flow_full_detail", "flow_summary", "flow_drops", 
 
 class Protocol(Enum):
     """Enum for protocols."""
+
     TCP = 6
     UDP = 17
 
@@ -96,7 +98,7 @@ def generate_change_description_for_object_provision(hrefs: List[str]) -> str:
 
 
 def validate_traffic_analysis_arguments(
-    port: Optional[int], policy_decisions: List, protocol: str
+        port: Optional[int], policy_decisions: List, protocol: str
 ) -> None:
     """Validate arguments for traffic-analysis command.
 
@@ -132,11 +134,11 @@ def validate_virtual_service_arguments(port: Optional[int], protocol: str) -> No
 
 
 def validate_workloads_list_arguments(
-    max_results: Optional[int],
-    online: Optional[str],
-    managed: Optional[str],
-    enforcement_mode: Optional[str],
-    visibility_level: Optional[str],
+        max_results: Optional[int],
+        online: Optional[str],
+        managed: Optional[str],
+        enforcement_mode: Optional[str],
+        visibility_level: Optional[str],
 ) -> None:
     """Validate arguments for workloads-list command.
 
@@ -172,7 +174,7 @@ def validate_workloads_list_arguments(
 
 
 def validate_enforcement_boundary_create_arguments(
-    port: Optional[int], protocol: str
+        port: Optional[int], protocol: str
 ) -> None:
     """Validate arguments for enforcement-boundary-create command.
 
@@ -191,17 +193,25 @@ def validate_enforcement_boundary_create_arguments(
         raise InvalidValueError("protocol", protocol, VALID_PROTOCOLS)
 
 
-def validate_ip_lists_get_arguments(max_results: Optional[int]) -> None:
+def validate_ip_lists_get_arguments(max_results: Optional[int], ip_address: Optional[str]) -> None:
     """Validate arguments for ip-lists-get command.
 
     Args:
         max_results: Number of maximum results returned.
+        ip_address: IP address of ip lists to be returned.
     """
+    IP_REGEX = "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"
+
     if isinstance(max_results, int) and (max_results < 1):  # type: ignore
         raise InvalidValueError(
             message="{} is an invalid value for max_results. Max results must be positive integer.".format(
                 max_results
             )
+        )
+
+    if not re.search(IP_REGEX, ip_address):  # type: ignore
+        raise InvalidValueError(
+            message="{} is an invalid value for ip_address.".format(ip_address)
         )
 
 
@@ -226,10 +236,10 @@ def prepare_traffic_analysis_output(response: List) -> str:
             "Policy Decision": traffic.get("policy_decision"),
             "State": traffic.get("state"),
             "Flow Direction": traffic.get("flow_direction"),
-            "First Detected": None if not traffic.get("timestamp_range").get("first_detected") else
-            arg_to_datetime(traffic["timestamp_range"]["first_detected"]).strftime(HR_DATE_FORMAT),  # type: ignore
-            "Last Detected": None if not traffic.get("timestamp_range").get("last_detected") else
-            arg_to_datetime(traffic["timestamp_range"]["last_detected"]).strftime(HR_DATE_FORMAT),  # type: ignore
+            "First Detected": arg_to_datetime(traffic["timestamp_range"]["first_detected"]).strftime( # type: ignore
+                HR_DATE_FORMAT) if traffic.get("timestamp_range").get("first_detected") else None,
+            "Last Detected": arg_to_datetime(traffic["timestamp_range"]["last_detected"]).strftime( # type: ignore
+                HR_DATE_FORMAT) if traffic.get("timestamp_range").get("last_detected") else None
         })
 
     headers = list(hr_output[0].keys()) if hr_output else []
@@ -250,10 +260,10 @@ def prepare_virtual_service_output(response: Dict) -> str:
     for service_port in response.get("service_ports", []):
         hr_output.append({
             "Virtual Service HREF": response.get("href"),
-            "Created At": None if not response.get("created_at") else arg_to_datetime(  # type: ignore
-                response["created_at"]).strftime(HR_DATE_FORMAT),
-            "Updated At": None if not response.get("updated_at") else arg_to_datetime(  # type: ignore
-                response["updated_at"]).strftime(HR_DATE_FORMAT),
+            "Created At": arg_to_datetime(response["created_at"]).strftime(  # type: ignore
+                HR_DATE_FORMAT) if response.get("created_at") else None,
+            "Updated At": arg_to_datetime(response["updated_at"]).strftime(  # type: ignore
+                HR_DATE_FORMAT) if response.get("updated_at") else None,
             "Name": response.get("name"),
             "Description": response.get("description"),
             "Service Port": service_port.get("port") if "port" in service_port else "all ports have been selected",
@@ -323,19 +333,18 @@ def prepare_workload_get_output(response: Dict) -> str:
     Returns:
         markdown string to be displayed in the war room.
     """
-    hr_outputs = {}
     title = "Workload Details:"
 
     hr_outputs = {
-            "Workload HREF": response.get("href"),
-            "Name": response.get("name"),
-            "Description": response.get("description"),
-            "Created At": None if not response.get("created_at") else arg_to_datetime(  # type: ignore
-                response["created_at"]).strftime(HR_DATE_FORMAT),
-            "Updated At": None if not response.get("updated_at") else arg_to_datetime(  # type: ignore
-                response["updated_at"]).strftime(HR_DATE_FORMAT),
-            "Hostname": response.get("hostname"),
-        }
+        "Workload HREF": response.get("href"),
+        "Name": response.get("name"),
+        "Description": response.get("description"),
+        "Created At": arg_to_datetime(response["created_at"]).strftime(  # type: ignore
+            HR_DATE_FORMAT) if response.get("created_at") else None,
+        "Updated At": arg_to_datetime(response["updated_at"]).strftime(  # type: ignore
+            HR_DATE_FORMAT) if response.get("updated_at") else None,
+        "Hostname": response.get("hostname"),
+    }
 
     headers = list(hr_outputs.keys())
     return tableToMarkdown(title, hr_outputs, headers=headers, removeNull=True)
@@ -361,10 +370,10 @@ def prepare_workloads_list_output(workloads_list: List) -> str:
                 "Enforcement Mode": workload.get("enforcement_mode"),
                 "Visibility Level": workload.get("visibility_level"),
                 "IP Address": workload.get("public_ip"),
-                "Created At": None if not workload.get("created_at") else arg_to_datetime(  # type: ignore
-                    workload["created_at"]).strftime(HR_DATE_FORMAT),
-                "Updated At": None if not workload.get("updated_at") else arg_to_datetime(  # type: ignore
-                    workload["updated_at"]).strftime(HR_DATE_FORMAT),
+                "Created At": arg_to_datetime(workload["created_at"]).strftime(  # type: ignore
+                    HR_DATE_FORMAT) if workload.get("created_at") else None,
+                "Updated At": arg_to_datetime(workload["updated_at"]).strftime(  # type: ignore
+                    HR_DATE_FORMAT) if workload.get("updated_at") else None,
             }
         )
 
@@ -397,14 +406,14 @@ def prepare_enforcement_boundary_create_output(response: Dict) -> str:
             ingress_services.append(ingress_service_formatted)
 
     hr_outputs = {
-            "Enforcement Boundary HREF": response.get("href"),
-            "Name": response.get("name"),
-            "Created At": None if not response.get("created_at") else arg_to_datetime(  # type: ignore
-                response["created_at"]).strftime(HR_DATE_FORMAT),
-            "Updated At": None if not response.get("updated_at") else arg_to_datetime(  # type: ignore
-                response["updated_at"]).strftime(HR_DATE_FORMAT),  # type: ignore
-            "Ingress Services": ingress_services,
-        }
+        "Enforcement Boundary HREF": response.get("href"),
+        "Name": response.get("name"),
+        "Created At": arg_to_datetime(response["created_at"]).strftime(  # type: ignore
+            HR_DATE_FORMAT) if response.get("created_at") else None,
+        "Updated At": arg_to_datetime(response["updated_at"]).strftime(  # type: ignore
+            HR_DATE_FORMAT) if response.get("updated_at") else None,
+        "Ingress Services": ingress_services,
+    }
 
     headers = list(hr_outputs.keys())
     return tableToMarkdown(
@@ -440,6 +449,31 @@ def prepare_update_enforcement_mode_output(response: List):
     return tableToMarkdown(title, hr_outputs, headers=headers, removeNull=True)
 
 
+def ip_list_human_readable(response: Dict) -> Dict:
+    """Prepare dictionary for ip list.
+
+    Args:
+        response: Response from the SDK.
+
+    Returns:
+        Dictionary for ip list.
+    """
+    hr_output = {
+        "IP List HREF": response.get("href", ""),
+        "Name": response.get("name", ""),
+        "Created At": arg_to_datetime(response.get("created_at")).strftime(  # type: ignore
+            HR_DATE_FORMAT) if response.get("created_at") else None,
+        "Updated At": arg_to_datetime(response.get("updated_at")).strftime(  # type: ignore
+            HR_DATE_FORMAT) if response.get("updated_at") else None,
+        "IP Ranges": ", ".join(
+            [ip_range.get("from_ip") + (" - " + ip_range["to_ip"] if ip_range.get("to_ip") else "") for ip_range in
+             response.get("ip_ranges", [])]),
+        "FQDNs": ", ".join([fqdn_rec["fqdn"] for fqdn_rec in response.get("fqdns", [])])
+    }
+
+    return hr_output
+
+
 def prepare_ip_list_get_output(response: Dict) -> str:
     """Prepare human-readable output for ip-list-get command.
 
@@ -449,18 +483,7 @@ def prepare_ip_list_get_output(response: Dict) -> str:
     Returns:
         markdown string to be displayed in the war room.
     """
-    hr_output = {
-        "IP List HREF": response.get("href", ""),
-        "Name": response.get("name", ""),
-        "Created At": None if not response.get("created_at") else arg_to_datetime(  # type: ignore
-            response.get("created_at")).strftime(HR_DATE_FORMAT),
-        "Updated At": None if not response.get("updated_at") else arg_to_datetime(  # type: ignore
-            response.get("updated_at", "")).strftime(HR_DATE_FORMAT),
-        "IP Ranges": ", ".join(
-            [ip_range.get("from_ip") + (" - " + ip_range["to_ip"] if ip_range.get("to_ip") else "") for ip_range in
-             response.get("ip_ranges", [])]),
-        "FQDNs": ", ".join([fqdn_rec["fqdn"] for fqdn_rec in response.get("fqdns", [])])
-    }
+    hr_output = ip_list_human_readable(response)
 
     headers = list(hr_output.keys())
     return tableToMarkdown("IP List Details:", hr_output, headers=headers, removeNull=True)
@@ -477,20 +500,7 @@ def prepare_ip_lists_get_output(response: List) -> str:
     """
     hr_outputs = []
     for ip_list in response:
-        hr_outputs.append(
-            {
-                "IP List HREF": ip_list.get("href"),
-                "Name": ip_list.get("name"),
-                "Created At": None if not ip_list.get("created_at") else arg_to_datetime(  # type: ignore
-                    ip_list["created_at"]).strftime(HR_DATE_FORMAT),
-                "Updated At": None if not ip_list.get("updated_at") else arg_to_datetime(  # type: ignore
-                    ip_list["updated_at"]).strftime(HR_DATE_FORMAT),
-                "IP Ranges": ", ".join(
-                    [ip_range.get("from_ip") + (" - " + ip_range["to_ip"] if ip_range.get("to_ip") else "") for ip_range
-                     in ip_list.get("ip_ranges", [])]),
-                "FQDNS": [fqdn.get("fqdn") for fqdn in ip_list.get("fqdns")],
-            }
-        )
+        hr_outputs.append(ip_list_human_readable(ip_list))
 
     headers = list(hr_outputs[0].keys()) if hr_outputs else []
     return tableToMarkdown("IP Lists:", hr_outputs, headers=headers, removeNull=True)
@@ -509,10 +519,10 @@ def prepare_ruleset_create_output(response: Dict, name: Optional[Any]):
     hr_output = {
         "Ruleset HREF": response.get("href"),
         "Name": name,
-        "Created At": None if not response.get("created_at") else arg_to_datetime(  # type: ignore
-            response["created_at"]).strftime(HR_DATE_FORMAT),
-        "Updated At": None if not response.get("updated_at") else arg_to_datetime(  # type: ignore
-            response["updated_at"]).strftime(HR_DATE_FORMAT),
+        "Created At": arg_to_datetime(response["created_at"]).strftime(  # type: ignore
+            HR_DATE_FORMAT) if response.get("created_at") else None,
+        "Updated At": arg_to_datetime(response["updated_at"]).strftime(  # type: ignore
+            HR_DATE_FORMAT) if response.get("updated_at") else None,
         "Enabled": response.get("enabled"),
         "Rules": response.get("rules"),
         "Caps": response.get("caps")
@@ -522,6 +532,13 @@ def prepare_ruleset_create_output(response: Dict, name: Optional[Any]):
 
     return tableToMarkdown("Ruleset {} has been created successfully.".format(name), hr_output, headers=headers,
                            removeNull=True)
+
+
+def extract_values_from_dictionary(response: List) -> str:
+    for key, value in response[0].items():
+        if key == "actors":
+            return value
+    return value.get("href")
 
 
 def prepare_rule_create_output(response: Dict) -> str:
@@ -535,13 +552,17 @@ def prepare_rule_create_output(response: Dict) -> str:
     """
     hr_output = {
         "Rule HREF": response.get("href"), "Description": response.get("description"),
-        "Created At": None if not response.get("created_at") else arg_to_datetime(  # type: ignore
-            response["created_at"]).strftime(HR_DATE_FORMAT),
-        "Updated At": None if not response.get("updated_at") else arg_to_datetime(  # type: ignore
-            response["updated_at"]).strftime(HR_DATE_FORMAT),
+        "Created At": arg_to_datetime(response["created_at"]).strftime(  # type: ignore
+            HR_DATE_FORMAT) if response.get("created_at") else None,
+        "Updated At": arg_to_datetime(response["updated_at"]).strftime(  # type: ignore
+            HR_DATE_FORMAT) if response.get("updated_at") else None,
         "Enabled": response.get("enabled"),
         "Network Type": response.get("network_type"),
-        "Ingress Services": ", ".join([resp.get("href") for resp in response.get("ingress_services", [])])
+        "Ingress Services": ", ".join([resp.get("href") for resp in response.get("ingress_services", [])]),
+        "Providers": extract_values_from_dictionary(response.get("providers")),  # type: ignore
+        "Consumers": extract_values_from_dictionary(response.get("consumers")),  # type: ignore
+        "Resolve Providers As": response["resolve_labels_as"]["providers"],
+        "Resolve Consumers As": response["resolve_labels_as"]["consumers"]
     }
 
     title = "Rule {} has been created successfully.".format(response.get("href"))
@@ -713,9 +734,7 @@ def object_provision_command(client: PolicyComputeEngine, args: Dict[str, Any]) 
                           raw_response=response_dict)
 
 
-def workload_get_command(
-    client: PolicyComputeEngine, args: Dict[str, Any]
-) -> CommandResults:
+def workload_get_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> CommandResults:
     """Retrieve a workload.
 
     Args:
@@ -742,9 +761,7 @@ def workload_get_command(
     )
 
 
-def workloads_list_command(
-    client: PolicyComputeEngine, args: Dict[str, Any]
-) -> CommandResults:
+def workloads_list_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> CommandResults:
     """Retrieve the workloads list.
 
     Args:
@@ -764,9 +781,7 @@ def workloads_list_command(
     enforcement_mode = args.get("enforcement_mode")
     visibility_level = args.get("visibility_level")
 
-    validate_workloads_list_arguments(
-        max_results, online, managed, enforcement_mode, visibility_level
-    )
+    validate_workloads_list_arguments(max_results, online, managed, enforcement_mode, visibility_level)
 
     if labels:
         labels = json.dumps([argToList(labels)])
@@ -796,9 +811,7 @@ def workloads_list_command(
     )
 
 
-def enforcement_boundary_create_command(
-    client: PolicyComputeEngine, args: Dict[str, Any]
-) -> CommandResults:
+def enforcement_boundary_create_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> CommandResults:
     """Create an enforcement boundary.
 
     Args:
@@ -814,9 +827,8 @@ def enforcement_boundary_create_command(
     providers = args.get("providers")
     consumers = args.get("consumers")
 
-    validate_required_parameters(
-        name=name, port=port, providers=providers, consumers=consumers
-    )
+    validate_required_parameters(name=name, port=port, providers=providers, consumers=consumers)
+
     providers = argToList(providers)
     consumers = argToList(consumers)
     port = arg_to_number(port, arg_name="port")  # type: ignore
@@ -833,9 +845,7 @@ def enforcement_boundary_create_command(
 
     enforcement_boundary_json = enforcement_boundary.to_json()
 
-    readable_output = prepare_enforcement_boundary_create_output(
-        enforcement_boundary_json
-    )
+    readable_output = prepare_enforcement_boundary_create_output(enforcement_boundary_json)
 
     return CommandResults(
         outputs_prefix="Illumio.EnforcementBoundary",
@@ -846,9 +856,7 @@ def enforcement_boundary_create_command(
     )
 
 
-def update_enforcement_mode_command(
-    client: PolicyComputeEngine, args: Dict[str, Any]
-) -> CommandResults:
+def update_enforcement_mode_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> CommandResults:
     """Update enforcement mode for one or more workloads.
 
     Args:
@@ -914,9 +922,7 @@ def ip_list_get_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> Co
     )
 
 
-def ip_lists_get_command(
-    client: PolicyComputeEngine, args: Dict[str, Any]
-) -> CommandResults:
+def ip_lists_get_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> CommandResults:
     """Retrieve the IP lists.
 
     Args:
@@ -929,14 +935,12 @@ def ip_lists_get_command(
     description = args.get("description")
     fqdn = args.get("fqdn")
     ip_address = args.get("ip_address")
-    max_results = arg_to_number(
-        args.get("max_results", "500"), arg_name="max_results"
-    )
+    max_results = arg_to_number(args.get("max_results", "500"), arg_name="max_results")
     name = args.get("name")
 
-    validate_ip_lists_get_arguments(max_results)
+    validate_ip_lists_get_arguments(max_results, ip_address)
 
-    ip_lists = client.ip_lists.get_all(
+    ip_lists = client.ip_lists.get(
         params={
             "description": description,
             "fqdn": fqdn,
@@ -1036,7 +1040,6 @@ def main():
     """Parse params and runs command functions."""
     try:
         command = demisto.command()
-        demisto.debug(f"Command being called is {command}.")
 
         params = demisto.params()
         api_user = params.get("api_user")
@@ -1085,7 +1088,7 @@ def main():
                 remove_nulls_from_dictionary(trim_spaces_from_args(args))
                 return_results(illumio_commands[command](client, args))
             else:
-                raise NotImplementedError(f"Command {command} is not implemented")
+                raise NotImplementedError("Command {} is not implemented".format(command))
     except Exception as e:
         demisto.error(traceback.format_exc())
         return_error("Failed to execute {} command.\nError:\n{}".format(command, str(e)))
