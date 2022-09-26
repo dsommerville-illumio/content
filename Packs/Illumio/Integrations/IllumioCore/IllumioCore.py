@@ -200,8 +200,6 @@ def validate_ip_lists_get_arguments(max_results: Optional[int], ip_address: Opti
         max_results: Number of maximum results returned.
         ip_address: IP address of ip lists to be returned.
     """
-    IP_REGEX = "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"
-
     if isinstance(max_results, int) and (max_results < 1):  # type: ignore
         raise InvalidValueError(
             message="{} is an invalid value for max_results. Max results must be positive integer.".format(
@@ -209,7 +207,7 @@ def validate_ip_lists_get_arguments(max_results: Optional[int], ip_address: Opti
             )
         )
 
-    if not re.search(IP_REGEX, ip_address):  # type: ignore
+    if not is_ip_valid(ip_address):
         raise InvalidValueError(
             message="{} is an invalid value for ip_address.".format(ip_address)
         )
