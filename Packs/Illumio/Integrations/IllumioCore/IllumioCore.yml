@@ -1335,6 +1335,310 @@ script:
     - contextPath: Illumio.IPList.fqdns.description
       description: Description of FQDN.
       type: String
+  - arguments:
+    - default: false
+      description: Description of IP list to return. Support partial matches.
+      isArray: false
+      name: description
+      required: false
+      secret: false
+    - default: false
+      description: IP lists matching fqdn. Supports partial matches.
+      isArray: false
+      name: fqdn
+      required: false
+      secret: false
+    - default: false
+      description: IP address matching IP list(s) to return. Supports partial matches.
+      isArray: false
+      name: ip_address
+      required: false
+      secret: false
+    - default: false
+      defaultValue: '500'
+      description: |-
+        Maximum number of IP Lists to return. The value must be positive integer. High value will result in performance issue.
+        Note: 2500 is the optimum value.
+      isArray: false
+      name: max_results
+      predefined:
+      - ''
+      required: false
+      secret: false
+    - default: false
+      description: Name of IP list(s) to return. Supports partial matches.
+      isArray: false
+      name: name
+      required: false
+      secret: false
+    deprecated: false
+    description: Retrieves the list of IPs based on the query parameters.
+    execution: false
+    name: illumio-ip-lists-get
+    outputs:
+    - contextPath: Illumio.IPLists.href
+      description: URI of the IP list.
+      type: String
+    - contextPath: Illumio.IPLists.description
+      description: Description of IP list.
+      type: String
+    - contextPath: Illumio.IPLists.external_data_set
+      description: External data set identifier.
+      type: String
+    - contextPath: Illumio.IPLists.external_data_reference
+      description: External data reference identifier.
+      type: String
+    - contextPath: Illumio.IPLists.created_at
+      description: Time stamp when this IP list was first created.
+      type: Date
+    - contextPath: Illumio.IPLists.updated_at
+      description: Time stamp when this IP List was last updated.
+      type: Date
+    - contextPath: Illumio.IPLists.deleted_at
+      description: Time stamp when this IP List was deleted.
+      type: Date
+    - contextPath: Illumio.IPLists.created_by.href
+      description: User who originally created this IP List.
+      type: String
+    - contextPath: Illumio.IPLists.updated_by.href
+      description: User who last updated this IP List.
+      type: String
+    - contextPath: Illumio.IPLists.deleted_by.href
+      description: User who has deleted this IP List.
+      type: String
+    - contextPath: Illumio.IPLists.name
+      description: Name (must be unique).
+      type: String
+    - contextPath: Illumio.IPLists.ip_ranges.description
+      description: Description of given IP range.
+      type: String
+    - contextPath: Illumio.IPLists.ip_ranges.from_ip
+      description: IP address or a low end of IP range. Might be specified with CIDR
+        notation.
+      type: String
+    - contextPath: Illumio.IPLists.ip_ranges.to_ip
+      description: High end of an IP range.
+      type: String
+    - contextPath: Illumio.IPLists.ip_ranges.exclusion
+      description: Whether this IP address is an exclusion. Exclusions must be a strict
+        subset of inclusive IP addresses.
+      type: Boolean
+    - contextPath: Illumio.IPLists.fqdns.fqdn
+      description: Fully qualified domain name.
+      type: String
+    - contextPath: Illumio.IPLists.fqdns.description
+      description: Description of FQDN.
+      type: String
+  - arguments:
+    - default: false
+      description: Ruleset name.
+      isArray: false
+      name: name
+      required: true
+      secret: false
+    deprecated: false
+    description: Creates a ruleset with a unique name. Until provisioned with the
+      'illumio-object-provision' command, this object will remain in a draft state.
+    execution: false
+    name: illumio-ruleset-create
+    outputs:
+    - contextPath: Illumio.Ruleset.href
+      description: Label URI.
+      type: String
+    - contextPath: Illumio.Ruleset.created_at
+      description: Ruleset creation time.
+      type: Date
+    - contextPath: Illumio.Ruleset.updated_at
+      description: Ruleset updation time.
+      type: Date
+    - contextPath: Illumio.Ruleset.deleted_at
+      description: Ruleset deletion time.
+      type: Date
+    - contextPath: Illumio.Ruleset.created_by.href
+      description: URI of the user who has created the ruleset.
+      type: String
+    - contextPath: Illumio.Ruleset.updated_by.href
+      description: URI of the user who has updated the ruleset.
+      type: String
+    - contextPath: Illumio.Ruleset.deleted_by.href
+      description: URI of the user who has deleted the ruleset.
+      type: String
+    - contextPath: Illumio.Ruleset.update_type
+      description: Type of modification done on the ruleset.
+      type: String
+    - contextPath: Illumio.Ruleset.name
+      description: Name of the ruleset.
+      type: String
+    - contextPath: Illumio.Ruleset.description
+      description: Description of the ruleset.
+      type: String
+    - contextPath: Illumio.Ruleset.enabled
+      description: Whether the ruleset is enabled or not.
+      type: Boolean
+    - contextPath: Illumio.Ruleset.scopes
+      description: Scope of the ruleset.
+      type: Unknown
+    - contextPath: Illumio.Ruleset.rules
+      description: Rules in the ruleset.
+      type: Unknown
+    - contextPath: Illumio.Ruleset.ip_tables_rules
+      description: Array of IP table rules in the ruleset.
+      type: Unknown
+    - contextPath: Illumio.Ruleset.caps
+      description: Array of permissions for the entity to the current user - an empty
+        array implies read-only access.
+      type: Unknown
+  - arguments:
+    - default: false
+      description: HREF of the ruleset in which to create the rule.
+      isArray: false
+      name: ruleset_href
+      required: true
+      secret: false
+    - default: false
+      description: HREFs of entities to be used as providers for the rule. For all
+        workloads provide "ams". Supports comma-separated values.
+      isArray: true
+      name: providers
+      required: true
+      secret: false
+    - default: false
+      description: HREFs of entities to be used as consumers for the rule. For all
+        workloads provide "ams". Supports comma-separated values.
+      isArray: true
+      name: consumers
+      required: true
+      secret: false
+    - default: false
+      description: |-
+        Provider objects the rule should apply to. Supports comma separated values.
+
+        Supported values are: 'workloads' and 'virtual_services'
+      isArray: true
+      name: resolve_providers_as
+      required: false
+      secret: false
+    - default: false
+      description: |-
+        Consumer objects the rule should apply to. Supports comma separated values.
+
+        Supported values are: 'workloads' and 'virtual_services'
+      isArray: true
+      name: resolve_consumers_as
+      required: false
+      secret: false
+    - default: false
+      description: Service URIs. Supports comma separated values.
+      isArray: true
+      name: ingress_services
+      required: false
+      secret: false
+    deprecated: false
+    description: Creates & assigns rules to a particular ruleset. Added or updated
+      Rules will remain in draft state until their containing Rule Set is provisioned
+      using the "illumio-object-provision" command.
+    execution: false
+    name: illumio-rule-create
+    outputs:
+    - contextPath: Illumio.Rule.href
+      description: Label URI.
+      type: String
+    - contextPath: Illumio.Rule.created_at
+      description: Rule creation time.
+      type: Date
+    - contextPath: Illumio.Rule.updated_at
+      description: Rule updated time.
+      type: Date
+    - contextPath: Illumio.Rule.deleted_at
+      description: Rule deleted time.
+      type: Date
+    - contextPath: Illumio.Rule.created_by.href
+      description: URI of the user who has created the rule.
+      type: String
+    - contextPath: Illumio.Rule.updated_by.href
+      description: URI of the user who has updated the rule.
+      type: String
+    - contextPath: Illumio.Rule.deleted_by
+      description: URI of the user who has deleted the rule.
+      type: String
+    - contextPath: Illumio.Rule.update_type
+      description: Type of modification done on the rule.
+      type: String
+    - contextPath: Illumio.Rule.description
+      description: Description of the rule.
+      type: String
+    - contextPath: Illumio.Rule.enabled
+      description: Whether the rule is enabled or not.
+      type: Boolean
+    - contextPath: Illumio.Rule.providers.label.href
+      description: Providers label URI.
+      type: String
+    - contextPath: Illumio.Rule.providers.actors
+      description: All workloads.
+      type: String
+    - contextPath: Illumio.Rule.providers.label_group.href
+      description: Providers label group URI.
+      type: String
+    - contextPath: Illumio.Rule.providers.virtual_server.href
+      description: Providers virtual server URI.
+      type: String
+    - contextPath: Illumio.Rule.providers.virtual_service.href
+      description: Provider virtual service URI.
+      type: String
+    - contextPath: Illumio.Rule.providers.ip_list.href
+      description: Provider ip list URI.
+      type: String
+    - contextPath: Illumio.Rule.providers.workload.href
+      description: Provider workload URI.
+      type: String
+    - contextPath: Illumio.Rule.consumers.label.href
+      description: Consumer label URI.
+      type: String
+    - contextPath: Illumio.Rule.consumers.label_group.href
+      description: Consumer label group URI.
+      type: String
+    - contextPath: Illumio.Rule.consumers.actors
+      description: All workloads.
+      type: String
+    - contextPath: Illumio.Rule.consumers.virtual_service.href
+      description: Consumer virtual service URI.
+      type: String
+    - contextPath: Illumio.Rule.consumers.ip_list.href
+      description: Consumer ip list URI.
+      type: String
+    - contextPath: Illumio.Rule.consumers.workload.href
+      description: Consumer workload URI.
+      type: String
+    - contextPath: Illumio.Rule.consumers.virtual_server.href
+      description: Consumer virtual server URI.
+      type: String
+    - contextPath: Illumio.Rule.consuming_security_principals
+      description: URI of consuming security principals.
+      type: String
+    - contextPath: Illumio.Rule.sec_connect
+      description: Whether a secure connection is established or not.
+      type: Boolean
+    - contextPath: Illumio.Rule.stateless
+      description: Whether packet filtering is stateless for the rule or not.
+      type: Boolean
+    - contextPath: Illumio.Rule.machine_auth
+      description: Whether machine authentication is enabled or not.
+      type: Boolean
+    - contextPath: Illumio.Rule.unscoped_consumers
+      description: Whether the scope for rule consumers is set to all or not.
+      type: Boolean
+    - contextPath: Illumio.Rule.network_type
+      description: Network types to which this rule should apply to.
+      type: String
+    - contextPath: Illumio.Rule.ingress_services.href
+      description: Array of service URI and port/protocol combinations.
+      type: String
+    - contextPath: Illumio.Rule.resolve_labels_as.providers
+      description: Providers resolve labels.
+      type: String
+    - contextPath: Illumio.Rule.resolve_labels_as.consumers
+      description: Consumers resolve labels.
+      type: String
   dockerimage: dev-illumio:1.0.0
   feed: false
   isfetch: false

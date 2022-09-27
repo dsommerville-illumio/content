@@ -5,8 +5,8 @@ import re
 
 import pytest
 import illumio
-from illumio import TrafficFlow, ServiceBinding, Workload, IllumioApiException, PolicyVersion, PolicyComputeEngine, \
-    VirtualService, IllumioException, EnforcementBoundary, IPList
+from illumio import TrafficFlow, ServiceBinding, Workload, PolicyVersion, PolicyComputeEngine, \
+    VirtualService, IllumioException, EnforcementBoundary, IPList, Rule, RuleSet
 
 from CommonServerPython import *  # noqa
 from IllumioCore import test_module, InvalidValueError, VALID_POLICY_DECISIONS, VALID_PROTOCOLS, \
@@ -15,7 +15,8 @@ from IllumioCore import test_module, InvalidValueError, VALID_POLICY_DECISIONS, 
     object_provision_command, prepare_object_provision_output, workload_get_command, prepare_workload_get_output, \
     workloads_list_command, prepare_workloads_list_output, enforcement_boundary_create_command, \
     prepare_enforcement_boundary_create_output, prepare_update_enforcement_mode_output, update_enforcement_mode_command, \
-    ip_list_get_command, prepare_ip_list_get_output
+    ip_list_get_command, prepare_ip_list_get_output, prepare_ip_lists_get_output, rule_create_command, \
+    ip_lists_get_command, ruleset_create_command, prepare_ruleset_create_output, prepare_rule_create_output
 
 """ CONSTANTS """
 
@@ -255,6 +256,49 @@ def ip_list_get_success_hr():
         expected_hr_output = f.read()
 
     return expected_hr_output
+
+
+@pytest.fixture(scope="module")
+def ip_lists_success():
+    """Retrieve the json response for ip lists get success."""
+    return util_load_json(os.path.join(TEST_DATA_DIRECTORY, "ip_lists_get_command_for_success_response.json"))
+
+
+@pytest.fixture(scope="module")
+def ip_lists_success_hr():
+    """Retrieve the human-readable response for ip lists get success."""
+    with open(os.path.join(TEST_DATA_DIRECTORY, "ip_lists_get_command_for_success_response_hr.md")) as f:
+        expected_hr_output = f.read()
+
+    return expected_hr_output
+
+
+@pytest.fixture(scope="module")
+def ruleset_create_success():
+    """Retrieve the json response for ruleset create."""
+    return util_load_json(os.path.join(TEST_DATA_DIRECTORY, "create_ruleset_success.json"))
+
+
+@pytest.fixture(scope="module")
+def ruleset_create_success_hr():
+    """Retrieve the human-readable response for ruleset create."""
+    with open(os.path.join(TEST_DATA_DIRECTORY, "create_ruleset_success_hr.md")) as file:
+        f = file.read()
+    return f
+
+
+@pytest.fixture(scope="module")
+def rule_create_success():
+    """Retrieve the json response for rule create."""
+    return util_load_json(os.path.join(TEST_DATA_DIRECTORY, "create_rule_success.json"))
+
+
+@pytest.fixture(scope="module")
+def rule_create_success_hr():
+    """Retrieve the human-readable for rule create."""
+    with open(os.path.join(TEST_DATA_DIRECTORY, "create_rule_success_hr.md")) as file:
+        hr_output = file.read()
+    return hr_output
 
 
 def test_test_module(mock_client, monkeypatch):
@@ -1190,3 +1234,181 @@ def test_ip_list_get_when_blank_arguments_provided(err_msg, args, mock_client):
     with pytest.raises(Exception) as err:
         ip_list_get_command(mock_client, args)
         assert str(err.value) == err_msg
+
+
+def test_ip_lists_get_command_for_success(mock_client, ip_lists_success, monkeypatch):
+    """
+    Test case scenario for successful execution of ip-lists-get-command function.
+
+    Given:
+        - command arguments for ip_lists_get_command
+    When:
+        - Calling `ip_lists_get_command` function
+    Then:
+        - Returns a valid raw_response
+    """
+    monkeypatch.setattr(
+        illumio.pce.PolicyComputeEngine._PCEObjectAPI,
+        "get",
+        lambda *a, **k: [IPList.from_json(ip_list) for ip_list in ip_lists_success],
+    )
+    resp = ip_lists_get_command(
+        mock_client,
+        {
+            "max_results": "1",
+            "fqdn": "app",
+            "ip_address": "127.0.0.1",
+            "name": "a",
+            "description": "a",
+        },
+    )
+
+    assert resp.raw_response == remove_empty_elements(ip_lists_success)
+
+
+def test_ip_lists_get_command_human_readable(ip_lists_success, ip_lists_success_hr):
+    """
+    Test case scenario for successful execution of ip-lists-get-command.
+
+    Given:
+        - command arguments for ip_lists_get_command
+    When:
+        - Calling `ip_lists_get_command` function
+    Then:
+        - Returns a valid human-readable
+    """
+    hr_output = prepare_ip_lists_get_output(ip_lists_success)
+    assert hr_output == ip_lists_success_hr
+
+
+@pytest.mark.parametrize(
+    "err_msg, args, err_type",
+    [
+        (
+            NOT_VALID_NUMBER_EXCEPTION_MESSAGE.format("max_results", "3i0"),
+            {"max_results": "3i0"},
+            ValueError,
+        ),
+        (
+            INVALID_MAX_RESULTS_EXCEPTION_MESSAGE.format(0),
+            {"max_results": "0"},
+            InvalidValueError,
+        ),
+    ],
+)
+def test_ip_lists_get_command_when_invalid_arguments_provided(err_msg, args, err_type, mock_client):
+    """
+    Test case scenario for execution of ip-lists-get-command when invalid arguments provided.
+
+    Given:
+        - command arguments for ip_lists_get_command
+    When:
+        - Calling `ip_lists_get_command` function
+    Then:
+        - Returns a valid error message
+    """
+    from IllumioCore import ip_lists_get_command
+
+    with pytest.raises(err_type) as err:
+        ip_lists_get_command(mock_client, args)
+        assert str(err.value) == err_msg
+
+
+def test_ruleset_create_command_success(mock_client, ruleset_create_success, monkeypatch):
+    """Test case scenario for ruleset-create-command when valid arguments provided to the command.
+
+    Given:
+        - A mock client and ruleset_create_command to get the results.
+    When:
+        - Valid arguments are provided to the command.
+    Then:
+        - Command should return valid raw response.
+    """
+    monkeypatch.setattr(
+        illumio.pce.PolicyComputeEngine._PCEObjectAPI,
+        "create",
+        lambda *a, **k: RuleSet.from_json(ruleset_create_success),
+    )
+
+    mock_args = {"name": "Trial ruleset from test cases - 1"}
+    resp = ruleset_create_command(mock_client, mock_args)
+
+    assert resp.raw_response == ruleset_create_success
+
+
+def test_ruleset_create_command_success_hr(ruleset_create_success, ruleset_create_success_hr):
+    """Test case scenario for ruleset-create-command when valid arguments provided to the command.
+
+    Given:
+        - Response from the SDK when calling the ruleset_create_command function.
+    When:
+        - Creating human-readable output from response.
+    Then:
+        - Should return valid markdown string.
+    """
+    mock_name = "Trial ruleset from test cases - 1"
+    resp = prepare_ruleset_create_output(ruleset_create_success, mock_name)
+    assert resp == ruleset_create_success_hr
+
+
+@pytest.mark.parametrize("err_msg, args", [
+    (MISSING_REQUIRED_PARAM_EXCEPTION_MESSAGE.format("ruleset_href"), {"ruleset_href": ""}),
+    (MISSING_REQUIRED_PARAM_EXCEPTION_MESSAGE.format("providers"), {"ruleset_href": "test", "providers": ""}),
+    (MISSING_REQUIRED_PARAM_EXCEPTION_MESSAGE.format("consumers"),
+     {"ruleset_href": "test", "providers": "test", "consumers": ""}),
+])
+def test_rule_create_command_when_blank_arguments_provided(err_msg, args, mock_client):
+    """
+    Test case scenario for execution of rule-create-command when invalid arguments are provided.
+
+    Given:
+        - rule-create-command function and mock_client to call the function
+    When:
+        - Invalid arguments (Empty values) provided in the arguments
+    Then:
+        - Returns a valid error message
+    """
+    with pytest.raises(Exception) as err:
+        rule_create_command(mock_client, args)
+        assert str(err.value) == err_msg
+
+
+def test_rule_create_command_success(mock_client, rule_create_success, monkeypatch):
+    """Test case scenario for rule-create-command when valid arguments provided to the command.
+
+    Given:
+        - A mock client and rule_create_command to get the results.
+    When:
+        - Valid arguments are provided to the command.
+    Then:
+        - Command should return valid raw response.
+    """
+    monkeypatch.setattr(illumio.pce.PolicyComputeEngine._PCEObjectAPI, "create",
+                        lambda *a, **k: Rule.from_json(rule_create_success))
+
+    mock_args = {
+        "ruleset_href": "/orgs/1/sec_policy/draft/rule_sets/2220",
+        "providers": "/orgs/1/labels/3",
+        "consumers": "/orgs/1/labels/3",
+        "ingress_services": "/orgs/1/sec_policy/draft/services/1745",
+        "resolve_providers_as": "workloads",
+        "resolve_consumers_as": "workloads"
+    }
+    resp = rule_create_command(mock_client, mock_args)
+
+    assert resp.raw_response == rule_create_success
+
+
+def test_rule_create_command_success_hr(rule_create_success, rule_create_success_hr):
+    """Test case scenario for rule_create_command when valid arguments provided to the command.
+
+    Given:
+        - Response from the SDK when calling the rule_create_command function.
+    When:
+        - Creating human-readable output from response.
+    Then:
+        - Should return valid markdown string.
+    """
+    resp = prepare_rule_create_output(rule_create_success)
+    assert resp == rule_create_success_hr
+
