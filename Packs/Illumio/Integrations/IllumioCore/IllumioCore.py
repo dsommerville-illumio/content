@@ -83,6 +83,20 @@ def trim_spaces_from_args(args: Dict) -> Dict:
     return args
 
 
+def extract_values_from_dictionary(response: List) -> str:
+    """Extract values from dictionary.
+    Args:
+        response: Response from the SDK.
+
+    Returns:
+        value of the key.
+    """
+    for key, value in response[0].items():
+        if key == "actors":
+            return value
+    return value.get("href")
+
+
 def generate_change_description_for_object_provision(hrefs: List[str]) -> str:
     """
     Generate a unique message for object provision command's change description argument.
@@ -207,10 +221,13 @@ def validate_ip_lists_get_arguments(max_results: Optional[int], ip_address: Opti
             )
         )
 
-    if not is_ip_valid(ip_address):
-        raise InvalidValueError(
-            message="{} is an invalid value for ip_address.".format(ip_address)
-        )
+    if not is_ipv6_valid(ip_address):
+        try:
+            socket.inet_aton(ip_address)
+        except:
+            raise InvalidValueError(
+                message="{} is an invalid value for ip_address.".format(ip_address)
+            )
 
 
 def prepare_traffic_analysis_output(response: List) -> str:
@@ -234,9 +251,9 @@ def prepare_traffic_analysis_output(response: List) -> str:
             "Policy Decision": traffic.get("policy_decision"),
             "State": traffic.get("state"),
             "Flow Direction": traffic.get("flow_direction"),
-            "First Detected": arg_to_datetime(traffic["timestamp_range"]["first_detected"]).strftime( # type: ignore
+            "First Detected": arg_to_datetime(traffic["timestamp_range"]["first_detected"]).strftime(  # type: ignore
                 HR_DATE_FORMAT) if traffic.get("timestamp_range").get("first_detected") else None,
-            "Last Detected": arg_to_datetime(traffic["timestamp_range"]["last_detected"]).strftime( # type: ignore
+            "Last Detected": arg_to_datetime(traffic["timestamp_range"]["last_detected"]).strftime(  # type: ignore
                 HR_DATE_FORMAT) if traffic.get("timestamp_range").get("last_detected") else None
         })
 
@@ -530,13 +547,6 @@ def prepare_ruleset_create_output(response: Dict, name: Optional[Any]):
 
     return tableToMarkdown("Ruleset {} has been created successfully.".format(name), hr_output, headers=headers,
                            removeNull=True)
-
-
-def extract_values_from_dictionary(response: List) -> str:
-    for key, value in response[0].items():
-        if key == "actors":
-            return value
-    return value.get("href")
 
 
 def prepare_rule_create_output(response: Dict) -> str:
