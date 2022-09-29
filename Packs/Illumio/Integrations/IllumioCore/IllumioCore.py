@@ -1,30 +1,36 @@
 """Implementation file for IllumioCore Integration."""
 import json
-import re
 from typing import Dict, List, Any
 from enum import Enum
 from datetime import datetime
 import urllib3
-from illumio import PolicyComputeEngine, convert_draft_href_to_active, IllumioException, Workload, IllumioEncoder, \
-    EnforcementBoundary, Rule
+from illumio import PolicyComputeEngine, convert_draft_href_to_active, IllumioException, Workload
 from illumio.explorer import TrafficQuery
-from illumio.policyobjects import VirtualService, ServicePort, ServiceBinding
-from illumio.util import convert_protocol, EnforcementMode, Reference
+from illumio.policyobjects import ServiceBinding, ServicePort, VirtualService
+from illumio.rules import EnforcementBoundary, Rule
+from illumio.util import (EnforcementMode, IllumioEncoder, Reference,
+                          convert_protocol)
+
 import demistomock as demisto
 from CommonServerPython import *  # noqa # pylint: disable=unused-wildcard-import
 from CommonServerUserPython import *  # noqa
 
 urllib3.disable_warnings()
-
 """ CONSTANTS """
 
+SUPPORTED_ENFORCEMENT_MODES = ["visibility_only", "full", "idle", "selective"]
+SUPPORTED_VISIBILITY_LEVEL = [
+    "flow_full_detail",
+    "flow_summary",
+    "flow_drops",
+    "flow_off",
+    "enhanced_data_collection",
+]
 MIN_PORT = 1
 MAX_PORT = 65535
 HR_DATE_FORMAT = "%d %b %Y, %I:%M %p"
-VALID_PROTOCOLS = ["tcp", "udp"]
 VALID_POLICY_DECISIONS = ["potentially_blocked", "blocked", "unknown", "allowed"]
-SUPPORTED_ENFORCEMENT_MODES = ["visibility_only", "full", "idle", "selective"]
-SUPPORTED_VISIBILITY_LEVEL = ["flow_full_detail", "flow_summary", "flow_drops", "flow_off", "enhanced_data_collection"]
+VALID_PROTOCOLS = ["tcp", "udp"]
 
 
 class Protocol(Enum):
@@ -34,7 +40,7 @@ class Protocol(Enum):
     UDP = 17
 
 
-"""EXCEPTION CLASS"""
+""" EXCEPTION CLASS """
 
 
 class InvalidValueError(Exception):
@@ -65,7 +71,9 @@ def validate_required_parameters(**kwargs) -> None:
     """
     for key, value in kwargs.items():
         if not value:
-            raise ValueError("{} is a required parameter. Please provide correct value.".format(key))
+            raise ValueError(
+                "{} is a required parameter. Please provide correct value.".format(key)
+            )
 
 
 def trim_spaces_from_args(args: Dict) -> Dict:
@@ -108,11 +116,12 @@ def generate_change_description_for_object_provision(hrefs: List[str]) -> str:
         str: A string with the current time in UTC.
     """
     return "XSOAR - {}\nProvisioning following objects:\n{}".format(
-        datetime.now().astimezone(timezone.utc).isoformat()[:-6], ', '.join(hrefs))
+        datetime.now().astimezone(timezone.utc).isoformat()[:-6], ", ".join(hrefs)
+    )
 
 
 def validate_traffic_analysis_arguments(
-        port: Optional[int], policy_decisions: List, protocol: str
+    port: Optional[int], policy_decisions: List, protocol: str
 ) -> None:
     """Validate arguments for traffic-analysis command.
 
@@ -122,11 +131,17 @@ def validate_traffic_analysis_arguments(
         protocol: Communication protocol.
     """
     if port < MIN_PORT or port > MAX_PORT:  # type: ignore
-        raise InvalidValueError(message="{} invalid value for port. Value must be in 1 to 65535.".format(port))
+        raise InvalidValueError(
+            message="{} invalid value for port. Value must be in 1 to 65535.".format(
+                port
+            )
+        )
 
     for decision in policy_decisions:
         if decision not in VALID_POLICY_DECISIONS:
-            raise InvalidValueError("policy_decisions", decision, VALID_POLICY_DECISIONS)
+            raise InvalidValueError(
+                "policy_decisions", decision, VALID_POLICY_DECISIONS
+            )
 
     if protocol not in VALID_PROTOCOLS:
         raise InvalidValueError("protocol", protocol, VALID_PROTOCOLS)
@@ -141,18 +156,21 @@ def validate_virtual_service_arguments(port: Optional[int], protocol: str) -> No
     """
     if port != -1 and (port > MAX_PORT or port < MIN_PORT or port == 0):  # type: ignore
         raise InvalidValueError(
-            message="{} is an invalid value for port. Value must be in 1 to 65535 or -1.".format(port))
+            message="{} is an invalid value for port. Value must be in 1 to 65535 or -1.".format(
+                port
+            )
+        )
 
     if protocol not in VALID_PROTOCOLS:
         raise InvalidValueError("protocol", protocol, VALID_PROTOCOLS)
 
 
 def validate_workloads_list_arguments(
-        max_results: Optional[int],
-        online: Optional[str],
-        managed: Optional[str],
-        enforcement_mode: Optional[str],
-        visibility_level: Optional[str],
+    max_results: Optional[int],
+    online: Optional[str],
+    managed: Optional[str],
+    enforcement_mode: Optional[str],
+    visibility_level: Optional[str],
 ) -> None:
     """Validate arguments for workloads-list command.
 
@@ -188,7 +206,7 @@ def validate_workloads_list_arguments(
 
 
 def validate_enforcement_boundary_create_arguments(
-        port: Optional[int], protocol: str
+    port: Optional[int], protocol: str
 ) -> None:
     """Validate arguments for enforcement-boundary-create command.
 
@@ -221,13 +239,14 @@ def validate_ip_lists_get_arguments(max_results: Optional[int], ip_address: Opti
             )
         )
 
-    if not is_ipv6_valid(ip_address):
-        try:
-            socket.inet_aton(ip_address)
-        except:
-            raise InvalidValueError(
-                message="{} is an invalid value for ip_address.".format(ip_address)
-            )
+    if ip_address:
+        if not is_ipv6_valid(ip_address):
+            try:
+                socket.inet_aton(ip_address)  # type: ignore
+            except: # noqa
+                raise InvalidValueError(
+                    message="{} is an invalid value for ip_address.".format(ip_address)
+                )
 
 
 def prepare_traffic_analysis_output(response: List) -> str:
@@ -606,30 +625,38 @@ def traffic_analysis_command(client: PolicyComputeEngine, args: Dict[str, Any]) 
         client: PolicyComputeEngine to use.
         args: arguments obtained from demisto.args()
 
-    Returns: CommandResult object
+    Returns:
+        CommandResult object
     """
     port = arg_to_number(args.get("port"))
     protocol = args.get("protocol", "tcp").lower()
     start_time = arg_to_datetime(args.get("start_time", "1 week ago")).isoformat()  # type: ignore
     end_time = arg_to_datetime(args.get("end_time", "now")).isoformat()  # type: ignore
     policy_decisions = argToList(args.get("policy_decisions", "potentially_blocked,unknown"))
+
     validate_required_parameters(port=port)
     validate_traffic_analysis_arguments(port, policy_decisions, protocol)  # type: ignore
+
     query_name = "XSOAR - Traffic analysis for port {}: {}".format(port, datetime.now().isoformat())
+
     proto = convert_protocol(protocol)
     service = ServicePort(port, proto=proto)  # type: ignore
-
     traffic_query = TrafficQuery.build(
-        start_date=start_time, end_date=end_time, policy_decisions=policy_decisions, include_services=[service]
+        start_date=start_time,
+        end_date=end_time,
+        policy_decisions=policy_decisions,
+        include_services=[service],
     )
 
     response = client.get_traffic_flows_async(query_name=query_name, traffic_query=traffic_query)
     json_response = []
+
     for resp in response:
         resp = resp.to_json()
         json_response.append(resp)
 
     readable_output = prepare_traffic_analysis_output(json_response)
+
     return CommandResults(
         outputs_prefix="Illumio.TrafficFlows",
         outputs_key_field="href",
@@ -639,14 +666,15 @@ def traffic_analysis_command(client: PolicyComputeEngine, args: Dict[str, Any]) 
     )
 
 
-def virtual_service_create_command(client: PolicyComputeEngine, args: Dict[str, any]) -> CommandResults:  # type: ignore
+def virtual_service_create_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> CommandResults:
     """Create a virtual service.
 
     Args:
         client: PolicyComputeEngine to use.
         args: arguments obtained from demisto.args()
 
-    Returns: CommandResult object
+    Returns:
+        CommandResult object
     """
     port = args.get("port")
     protocol = args.get("protocol", "tcp").lower()
@@ -659,11 +687,13 @@ def virtual_service_create_command(client: PolicyComputeEngine, args: Dict[str, 
 
     service = VirtualService(name=name, service_ports=[ServicePort(port=port, proto=proto)])  # type: ignore
     virtual_service = client.virtual_services.create(service)  # type: ignore
+
     virtual_service_json = virtual_service.to_json()
-    hr_output = prepare_virtual_service_output(virtual_service_json)
+    readable_output = prepare_virtual_service_output(virtual_service_json)
+
     return CommandResults(
         outputs_prefix="Illumio.VirtualService",
-        readable_output=hr_output,
+        readable_output=readable_output,
         outputs_key_field="href",
         raw_response=virtual_service_json,
         outputs=remove_empty_elements(virtual_service_json),
@@ -715,7 +745,7 @@ def object_provision_command(client: PolicyComputeEngine, args: Dict[str, Any]) 
     Command function for illumio-objects-provision command.
 
     Args:
-        client: Client object to be used.
+        client: PolicyComputeEngine to use.
         args: arguments obtained from demisto.args()
 
     Returns:
@@ -724,22 +754,29 @@ def object_provision_command(client: PolicyComputeEngine, args: Dict[str, Any]) 
     security_policy_objects = args.get("security_policy_objects", "")
     validate_required_parameters(security_policy_objects=security_policy_objects)
     security_policy_objects = argToList(security_policy_objects)
-    change_description = generate_change_description_for_object_provision(hrefs=security_policy_objects)
-
+    change_description = generate_change_description_for_object_provision(
+        hrefs=security_policy_objects
+    )
     response_object = client.provision_policy_changes(
-        change_description=change_description, hrefs=security_policy_objects)
+        change_description=change_description, hrefs=security_policy_objects
+    )
     response_dict = response_object.to_json()
-
     hr_output = prepare_object_provision_output(response_dict)
 
     # Converting draft HREFs to active
-    provisioned_hrefs = [convert_draft_href_to_active(href) for href in security_policy_objects]
+    provisioned_hrefs = [
+        convert_draft_href_to_active(href) for href in security_policy_objects
+    ]
 
     response_dict["provisioned_hrefs"] = provisioned_hrefs
 
-    return CommandResults(outputs_prefix="Illumio.PolicyState", outputs_key_field="href",
-                          outputs=remove_empty_elements(response_dict), readable_output=hr_output,
-                          raw_response=response_dict)
+    return CommandResults(
+        outputs_prefix="Illumio.PolicyState",
+        outputs_key_field="href",
+        outputs=remove_empty_elements(response_dict),
+        readable_output=hr_output,
+        raw_response=response_dict,
+    )
 
 
 def workload_get_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> CommandResults:
@@ -819,7 +856,9 @@ def workloads_list_command(client: PolicyComputeEngine, args: Dict[str, Any]) ->
     )
 
 
-def enforcement_boundary_create_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> CommandResults:
+def enforcement_boundary_create_command(
+    client: PolicyComputeEngine, args: Dict[str, Any]
+) -> CommandResults:
     """Create an enforcement boundary.
 
     Args:
@@ -835,8 +874,9 @@ def enforcement_boundary_create_command(client: PolicyComputeEngine, args: Dict[
     providers = args.get("providers")
     consumers = args.get("consumers")
 
-    validate_required_parameters(name=name, port=port, providers=providers, consumers=consumers)
-
+    validate_required_parameters(
+        name=name, port=port, providers=providers, consumers=consumers
+    )
     providers = argToList(providers)
     consumers = argToList(consumers)
     port = arg_to_number(port, arg_name="port")  # type: ignore
@@ -853,7 +893,9 @@ def enforcement_boundary_create_command(client: PolicyComputeEngine, args: Dict[
 
     enforcement_boundary_json = enforcement_boundary.to_json()
 
-    readable_output = prepare_enforcement_boundary_create_output(enforcement_boundary_json)
+    readable_output = prepare_enforcement_boundary_create_output(
+        enforcement_boundary_json
+    )
 
     return CommandResults(
         outputs_prefix="Illumio.EnforcementBoundary",
@@ -1032,7 +1074,6 @@ def rule_create_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> Co
 
     response = client.rules.create(rule, parent=ruleset_href)
     response = response.to_json()
-
     readable_output = prepare_rule_create_output(response)  # type: ignore
 
     return CommandResults(
@@ -1061,7 +1102,9 @@ def main():
         org_id = arg_to_number(params.get("org_id"), required=True, arg_name="org_id")
         if org_id <= 0:  # type: ignore
             raise ValueError(
-                "{} is an invalid value. Organization ID must be a non-zero and positive numeric value.".format(org_id)
+                "{} is an invalid value. Organization ID must be a non-zero and positive numeric value.".format(
+                    org_id
+                )
             )
 
         base_url = params.get("url").strip()
@@ -1071,7 +1114,9 @@ def main():
         proxy = handle_proxy()
 
         client = PolicyComputeEngine(url=base_url, port=port, org_id=org_id)
-        client.set_proxies(http_proxy=proxy.get("http", None), https_proxy=proxy.get("https", None))
+        client.set_proxies(
+            http_proxy=proxy.get("http", None), https_proxy=proxy.get("https", None)
+        )
         client.set_credentials(api_user, api_key)
 
         if command == "test-module":

@@ -15,7 +15,7 @@ configuration:
   name: port
   required: true
   type: 0
-- additionalinfo: The API user for authentication
+- additionalinfo: The API user for authentication.
   display: API Key Username
   name: api_user
   required: true
@@ -64,7 +64,7 @@ script:
       default: false
       defaultValue: tcp
       description: |-
-        Communication Protocol
+        Communication protocol.
 
         Supported values are: 'tcp' and 'udp'
       isArray: false
@@ -121,10 +121,10 @@ script:
       description: Destination IP address.
       type: String
     - contextPath: Illumio.TrafficFlows.dst.workload.hostname
-      description: Destination workload hostname
+      description: Destination workload hostname.
       type: String
     - contextPath: Illumio.TrafficFlows.dst.workload.name
-      description: Destination workload name
+      description: Destination workload name.
       type: String
     - contextPath: Illumio.TrafficFlows.dst.workload.href
       description: Destination workload URI.
@@ -142,8 +142,8 @@ script:
       description: Destination workload label value.
       type: String
     - contextPath: Illumio.TrafficFlows.service.port
-      description: Port of the traffic
-      type: String
+      description: Port of the traffic.
+      type: Number
     - contextPath: Illumio.TrafficFlows.service.proto
       description: Protocol number of the traffic.
       type: Number
@@ -206,7 +206,7 @@ script:
     name: illumio-virtual-service-create
     outputs:
     - contextPath: Illumio.VirtualService.href
-      description: Label URI
+      description: Label URI.
       type: String
     - contextPath: Illumio.VirtualService.created_at
       description: Virtual service creation time.
@@ -263,7 +263,10 @@ script:
       type: Unknown
   - arguments:
     - default: false
-      description: Workload HREFs to bind. Supports comma-separated values.
+      description: |-
+        Workload HREFs to bind. Supports comma-separated values.
+
+        Note: Users can retrieve the list of Href's by executing the "illumio-workloads-list" or the "illumio-traffic-analysis" command.
       isArray: true
       name: workloads
       required: true
@@ -280,7 +283,7 @@ script:
     name: illumio-service-binding-create
     outputs:
     - contextPath: Illumio.ServiceBinding.status
-      description: Indicates the status of the request.
+      description: Indicates the status of a request.
       type: String
     - contextPath: Illumio.ServiceBinding.href
       description: Label URI.
@@ -300,7 +303,7 @@ script:
     name: illumio-object-provision
     outputs:
     - contextPath: Illumio.PolicyState.href
-      description: Object Label URI.
+      description: Object label URI.
       type: String
     - contextPath: Illumio.PolicyState.commit_message
       description: Message for the provisioning.
@@ -336,7 +339,7 @@ script:
       description: Count of virtual servers.
       type: Number
     - contextPath: Illumio.PolicyState.object_counts.enforcement_boudaries
-      description: Count og enforcement boundaries.
+      description: Count of enforcement boundaries.
       type: Number
     - contextPath: Illumio.PolicyState.object_counts.virtual_services
       description: Count of virtual services.
@@ -348,7 +351,7 @@ script:
     - default: false
       description: |-
         Workload HREF.
-        Note: Users can retrieve the list of Href's by executing the "illumio-workload-list" command.
+        Note: Users can retrieve the list of Href's by executing the "illumio-workloads-list" command.
       isArray: false
       name: href
       required: true
@@ -1244,7 +1247,7 @@ script:
       name: enforcement_mode
       predefined:
       - Idle
-      - Visibility_Only
+      - Visibility_only
       - Selective
       - Full
       required: true
@@ -1283,7 +1286,7 @@ script:
     name: illumio-ip-list-get
     outputs:
     - contextPath: Illumio.IPList.href
-      description: URI of th IP list.
+      description: URI of the IP list.
       type: String
     - contextPath: Illumio.IPList.description
       description: Description of IP list.
@@ -1337,7 +1340,7 @@ script:
       type: String
   - arguments:
     - default: false
-      description: Description of IP list to return. Support partial matches.
+      description: Description of IP list to return. Supports partial matches.
       isArray: false
       name: description
       required: false
@@ -1361,8 +1364,6 @@ script:
         Note: 2500 is the optimum value.
       isArray: false
       name: max_results
-      predefined:
-      - ''
       required: false
       secret: false
     - default: false
@@ -1510,6 +1511,7 @@ script:
       required: true
       secret: false
     - default: false
+      defaultValue: workloads
       description: |-
         Provider objects the rule should apply to. Supports comma separated values.
 
@@ -1519,6 +1521,7 @@ script:
       required: false
       secret: false
     - default: false
+      defaultValue: workloads
       description: |-
         Consumer objects the rule should apply to. Supports comma separated values.
 
