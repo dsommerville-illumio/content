@@ -829,7 +829,7 @@ def workloads_list_command(client: PolicyComputeEngine, args: Dict[str, Any]) ->
     validate_workloads_list_arguments(max_results, online, managed, enforcement_mode, visibility_level)
 
     if labels:
-        labels = json.dumps([argToList(labels)])
+        labels = json.dumps(list(map(lambda x: [x], argToList(labels))))
 
     params = {
         "max_results": max_results,
