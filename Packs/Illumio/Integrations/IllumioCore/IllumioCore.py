@@ -121,7 +121,7 @@ def generate_change_description_for_object_provision(hrefs: List[str]) -> str:
 
 
 def validate_traffic_analysis_arguments(
-    port: Optional[int], policy_decisions: List, protocol: str
+        port: Optional[int], policy_decisions: List, protocol: str
 ) -> None:
     """Validate arguments for traffic-analysis command.
 
@@ -166,11 +166,11 @@ def validate_virtual_service_arguments(port: Optional[int], protocol: str) -> No
 
 
 def validate_workloads_list_arguments(
-    max_results: Optional[int],
-    online: Optional[str],
-    managed: Optional[str],
-    enforcement_mode: Optional[str],
-    visibility_level: Optional[str],
+        max_results: Optional[int],
+        online: Optional[str],
+        managed: Optional[str],
+        enforcement_mode: Optional[str],
+        visibility_level: Optional[str],
 ) -> None:
     """Validate arguments for workloads-list command.
 
@@ -206,7 +206,7 @@ def validate_workloads_list_arguments(
 
 
 def validate_enforcement_boundary_create_arguments(
-    port: Optional[int], protocol: str
+        port: Optional[int], protocol: str
 ) -> None:
     """Validate arguments for enforcement-boundary-create command.
 
@@ -243,7 +243,7 @@ def validate_ip_lists_get_arguments(max_results: Optional[int], ip_address: Opti
         if not is_ipv6_valid(ip_address):
             try:
                 socket.inet_aton(ip_address)  # type: ignore
-            except: # noqa
+            except:  # noqa
                 raise InvalidValueError(
                     message="{} is an invalid value for ip_address.".format(ip_address)
                 )
@@ -290,9 +290,8 @@ def prepare_virtual_service_output(response: Dict) -> str:
     Returns:
         markdown string to be displayed in the war room.
     """
-    hr_output = []
     for service_port in response.get("service_ports", []):
-        hr_output.append({
+        hr_output = {
             "Virtual Service HREF": response.get("href"),
             "Created At": arg_to_datetime(response["created_at"]).strftime(  # type: ignore
                 HR_DATE_FORMAT) if response.get("created_at") else None,
@@ -302,9 +301,9 @@ def prepare_virtual_service_output(response: Dict) -> str:
             "Description": response.get("description"),
             "Service Port": service_port.get("port") if "port" in service_port else "all ports have been selected",
             "Service Protocol": Protocol(service_port.get("proto")).name,
-        })
+        }
 
-    headers = list(hr_output[0].keys()) if hr_output else []
+    headers = list(hr_output.keys()) if hr_output else []
     title = f'Virtual Service:\n#### Successfully created virtual service: {response.get("href")}\n'
     return tableToMarkdown(title, hr_output, headers=headers, removeNull=True)
 
@@ -384,17 +383,17 @@ def prepare_workload_get_output(response: Dict) -> str:
     return tableToMarkdown(title, hr_outputs, headers=headers, removeNull=True)
 
 
-def prepare_workloads_list_output(workloads_list: List) -> str:
+def prepare_workloads_list_output(response: List) -> str:
     """Prepare human-readable output for workloads-list command.
 
     Args:
-        workloads_list: list of workloads in dict format.
+        response: list of workloads in dict format.
 
     Returns:
         markdown string to be displayed in the war room.
     """
     hr_outputs = []
-    for workload in workloads_list:
+    for workload in response:
         hr_outputs.append(
             {
                 "Workload HREF": workload.get("href"),
@@ -686,10 +685,16 @@ def virtual_service_create_command(client: PolicyComputeEngine, args: Dict[str, 
     proto = convert_protocol(protocol)
 
     service = VirtualService(name=name, service_ports=[ServicePort(port=port, proto=proto)])  # type: ignore
-    virtual_service = client.virtual_services.create(service)  # type: ignore
-
-    virtual_service_json = virtual_service.to_json()
-    readable_output = prepare_virtual_service_output(virtual_service_json)
+    try:
+        virtual_service = client.virtual_services.create(service)  # type: ignore
+        virtual_service_json = virtual_service.to_json()
+        readable_output = prepare_virtual_service_output(virtual_service_json)
+    except IllumioException:
+        virtual_services = client.virtual_services.get(params={"name": name})
+        if virtual_services:
+            virtual_service = virtual_services[0]
+            virtual_service_json = virtual_service.to_json()
+        readable_output = prepare_virtual_service_output(virtual_service_json)
 
     return CommandResults(
         outputs_prefix="Illumio.VirtualService",
@@ -720,7 +725,10 @@ def service_binding_create_command(client: PolicyComputeEngine, args: Dict[str, 
         client.virtual_services.get_by_reference(virtual_service)
     except IllumioException as e:
         raise InvalidValueError(
-            message="no active record for virtual service with HREF {}".format(virtual_service)) from e
+            message="no active record for virtual service with HREF {}".format(
+                virtual_service
+            )
+        ) from e
 
     service_bindings = [
         ServiceBinding(virtual_service=Reference(href=virtual_service), workload=Reference(href=href))  # type: ignore
@@ -729,13 +737,15 @@ def service_binding_create_command(client: PolicyComputeEngine, args: Dict[str, 
 
     response = client.service_bindings.create(service_bindings)  # type: ignore
     results = json.loads(json.dumps(response, cls=IllumioEncoder))
+    context_data = {}
+    context_data["hrefs"] = [service.get("href", "") for service in results.get("service_bindings", [])]
     readable_output = prepare_service_binding_output(results)
 
     return CommandResults(
         outputs_prefix="Illumio.ServiceBinding",
         readable_output=readable_output,
         outputs_key_field="href",
-        outputs=remove_empty_elements(results),
+        outputs=remove_empty_elements(context_data),
         raw_response=results,
     )
 
@@ -857,7 +867,7 @@ def workloads_list_command(client: PolicyComputeEngine, args: Dict[str, Any]) ->
 
 
 def enforcement_boundary_create_command(
-    client: PolicyComputeEngine, args: Dict[str, Any]
+        client: PolicyComputeEngine, args: Dict[str, Any]
 ) -> CommandResults:
     """Create an enforcement boundary.
 
@@ -889,13 +899,25 @@ def enforcement_boundary_create_command(
         providers=providers,  # type: ignore
         ingress_services=[{"port": port, "proto": proto}],
     )
-    enforcement_boundary = client.enforcement_boundaries.create(enforcement_boundary_rule)  # type: ignore
+    try:
+        enforcement_boundary = client.enforcement_boundaries.create(enforcement_boundary_rule)  # type: ignore
+        enforcement_boundary_href = enforcement_boundary.href
+        enforcement_boundary_json = enforcement_boundary.to_json()
+        enforcement_boundary_json["href"] = enforcement_boundary_href
+        readable_output = prepare_enforcement_boundary_create_output(
+            enforcement_boundary_json
+        )
+    except IllumioException:
+        enforcement_boundaries = client.enforcement_boundaries.get(params={"name": name})
+        if enforcement_boundaries:
+            enforcement_boundary = enforcement_boundaries[0]
+            enforcement_boundary_href = enforcement_boundary.href
+            enforcement_boundary_json = enforcement_boundary.to_json()
+            enforcement_boundary_json["href"] = enforcement_boundary_href
 
-    enforcement_boundary_json = enforcement_boundary.to_json()
-
-    readable_output = prepare_enforcement_boundary_create_output(
-        enforcement_boundary_json
-    )
+        readable_output = prepare_enforcement_boundary_create_output(
+            enforcement_boundary_json
+        )
 
     return CommandResults(
         outputs_prefix="Illumio.EnforcementBoundary",
@@ -1024,17 +1046,21 @@ def ruleset_create_command(client: PolicyComputeEngine, args: Dict[str, Any]) ->
     """
     name = args.get("name")
     validate_required_parameters(name=name)
-
-    response = client.rule_sets.create(body={"name": name, "scopes": [[]]})
-    json_response = response.to_json()
-
-    readable_output = prepare_ruleset_create_output(json_response, name)
-    outputs_response = remove_empty_elements(json_response)
+    try:
+        response = client.rule_sets.create(body={"name": name, "scopes": [[]]})
+        json_response = response.to_json()
+        readable_output = prepare_ruleset_create_output(json_response, name)
+    except IllumioException:
+        rule_sets = client.rule_sets.get(params={"name": name})
+        if rule_sets:
+            rule_set = rule_sets[0]
+            json_response = rule_set.to_json()
+        readable_output = prepare_ruleset_create_output(json_response, name)
 
     return CommandResults(
         outputs_prefix="Illumio.Ruleset",
         outputs_key_field="href",
-        outputs=outputs_response,
+        outputs=remove_empty_elements(json_response),
         readable_output=readable_output,
         raw_response=json_response
     )

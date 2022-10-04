@@ -1,4 +1,4 @@
-## illumio
+## Illumio
 
 For getting an API key, login to the Illumio UI.
 1) On the top right header, click on your username. 
