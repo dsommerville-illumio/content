@@ -691,10 +691,10 @@ def virtual_service_create_command(client: PolicyComputeEngine, args: Dict[str, 
         readable_output = prepare_virtual_service_output(virtual_service_json)
     except IllumioException:
         virtual_services = client.virtual_services.get(params={"name": name})
-        if virtual_services:
-            virtual_service = virtual_services[0]
+        for virtual_service in virtual_services:
             virtual_service_json = virtual_service.to_json()
-        readable_output = prepare_virtual_service_output(virtual_service_json)
+            if virtual_service_json.get("name") == name:
+                readable_output = prepare_virtual_service_output(virtual_service_json)
 
     return CommandResults(
         outputs_prefix="Illumio.VirtualService",
@@ -909,15 +909,14 @@ def enforcement_boundary_create_command(
         )
     except IllumioException:
         enforcement_boundaries = client.enforcement_boundaries.get(params={"name": name})
-        if enforcement_boundaries:
-            enforcement_boundary = enforcement_boundaries[0]
-            enforcement_boundary_href = enforcement_boundary.href
+        for enforcement_boundary in enforcement_boundaries:
             enforcement_boundary_json = enforcement_boundary.to_json()
+            enforcement_boundary_href = enforcement_boundary.href
             enforcement_boundary_json["href"] = enforcement_boundary_href
-
-        readable_output = prepare_enforcement_boundary_create_output(
-            enforcement_boundary_json
-        )
+            if enforcement_boundary_json.get("name") == name:
+                readable_output = prepare_enforcement_boundary_create_output(
+                    enforcement_boundary_json
+                )
 
     return CommandResults(
         outputs_prefix="Illumio.EnforcementBoundary",
@@ -1052,10 +1051,10 @@ def ruleset_create_command(client: PolicyComputeEngine, args: Dict[str, Any]) ->
         readable_output = prepare_ruleset_create_output(json_response, name)
     except IllumioException:
         rule_sets = client.rule_sets.get(params={"name": name})
-        if rule_sets:
-            rule_set = rule_sets[0]
+        for rule_set in rule_sets:
             json_response = rule_set.to_json()
-        readable_output = prepare_ruleset_create_output(json_response, name)
+            if json_response.get("name") == name:
+                readable_output = prepare_ruleset_create_output(json_response, name)
 
     return CommandResults(
         outputs_prefix="Illumio.Ruleset",
