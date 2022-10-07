@@ -281,11 +281,12 @@ def prepare_traffic_analysis_output(response: List) -> str:
     return tableToMarkdown("Traffic Analysis:", hr_output, headers=headers, removeNull=True)
 
 
-def prepare_virtual_service_output(response: Dict) -> str:
+def prepare_virtual_service_output(response: Dict, already_exists: bool = False) -> str:
     """Prepare human-readable output for virtual-service-create command.
 
     Args:
-        response: result returned after creating Virtual Service.
+        response: Result returned after creating Virtual Service.
+        already_exists: If virtual service already exists.
 
     Returns:
         markdown string to be displayed in the war room.
@@ -304,7 +305,12 @@ def prepare_virtual_service_output(response: Dict) -> str:
         }
 
     headers = list(hr_output.keys()) if hr_output else []
-    title = f'Virtual Service:\n#### Successfully created virtual service: {response.get("href")}\n'
+
+    if already_exists:
+        title = "Virtual Service {} already exists.".format(response.get("href"))
+    else:
+        title = "Virtual Service:\n#### Successfully created virtual service: {}\n".format(response.get("href"))
+
     return tableToMarkdown(title, hr_output, headers=headers, removeNull=True)
 
 
@@ -414,11 +420,12 @@ def prepare_workloads_list_output(response: List) -> str:
     return tableToMarkdown("Workloads:\n", hr_outputs, headers=headers, removeNull=True)
 
 
-def prepare_enforcement_boundary_create_output(response: Dict) -> str:
+def prepare_enforcement_boundary_create_output(response: Dict, already_exists: bool = False) -> str:
     """Prepare human-readable output for enforcement-boundary-create command.
 
     Args:
-        response: result returned after creating enforcement boundary.
+        response: Result returned after creating enforcement boundary.
+        already_exists: If enforcement boundary already exists.
 
     Returns:
         markdown string to be displayed in the war room.
@@ -449,8 +456,14 @@ def prepare_enforcement_boundary_create_output(response: Dict) -> str:
     }
 
     headers = list(hr_outputs.keys())
+
+    if already_exists:
+        title = "Enforcement Boundary {} already exists:\n".format(response.get("href"))
+    else:
+        title = "Enforcement Boundary:\n"
+
     return tableToMarkdown(
-        "Enforcement Boundary:\n", hr_outputs, headers=headers, removeNull=True
+        title, hr_outputs, headers=headers, removeNull=True
     )
 
 
@@ -539,12 +552,13 @@ def prepare_ip_lists_get_output(response: List) -> str:
     return tableToMarkdown("IP Lists:", hr_outputs, headers=headers, removeNull=True)
 
 
-def prepare_ruleset_create_output(response: Dict, name: Optional[Any]):
+def prepare_ruleset_create_output(response: Dict, name: Optional[Any], already_exists: bool = False):
     """Prepare Human Readable output for create ruleset command.
 
     Args:
         response: Response from the SDK.
         name: Name of the ruleset.
+        already_exists: If ruleset already exists.
 
     Returns:
         markdown string to be displayed in the war room.
@@ -563,7 +577,12 @@ def prepare_ruleset_create_output(response: Dict, name: Optional[Any]):
 
     headers = list(hr_output.keys())
 
-    return tableToMarkdown("Ruleset {} has been created successfully.".format(name), hr_output, headers=headers,
+    if already_exists:
+        title = "Ruleset {} already exists.".format(name)
+    else:
+        title = "Ruleset {} has been created successfully.".format(name)
+
+    return tableToMarkdown(title, hr_output, headers=headers,
                            removeNull=True)
 
 
@@ -688,13 +707,15 @@ def virtual_service_create_command(client: PolicyComputeEngine, args: Dict[str, 
     try:
         virtual_service = client.virtual_services.create(service)  # type: ignore
         virtual_service_json = virtual_service.to_json()
+        virtual_service_json["already_exists"] = False
         readable_output = prepare_virtual_service_output(virtual_service_json)
     except IllumioException:
         virtual_services = client.virtual_services.get(params={"name": name})
         for virtual_service in virtual_services:
             virtual_service_json = virtual_service.to_json()
+            virtual_service_json["already_exists"] = True
             if virtual_service_json.get("name") == name:
-                readable_output = prepare_virtual_service_output(virtual_service_json)
+                readable_output = prepare_virtual_service_output(virtual_service_json, already_exists=True)
 
     return CommandResults(
         outputs_prefix="Illumio.VirtualService",
@@ -899,11 +920,13 @@ def enforcement_boundary_create_command(
         providers=providers,  # type: ignore
         ingress_services=[{"port": port, "proto": proto}],
     )
+    enforcement_boundary_json = ""
     try:
         enforcement_boundary = client.enforcement_boundaries.create(enforcement_boundary_rule)  # type: ignore
         enforcement_boundary_href = enforcement_boundary.href
         enforcement_boundary_json = enforcement_boundary.to_json()
         enforcement_boundary_json["href"] = enforcement_boundary_href
+        enforcement_boundary_json["already_exists"] = False
         readable_output = prepare_enforcement_boundary_create_output(
             enforcement_boundary_json
         )
@@ -913,9 +936,10 @@ def enforcement_boundary_create_command(
             enforcement_boundary_json = enforcement_boundary.to_json()
             enforcement_boundary_href = enforcement_boundary.href
             enforcement_boundary_json["href"] = enforcement_boundary_href
+            enforcement_boundary_json["already_exists"] = True
             if enforcement_boundary_json.get("name") == name:
                 readable_output = prepare_enforcement_boundary_create_output(
-                    enforcement_boundary_json
+                    enforcement_boundary_json, already_exists=True
                 )
 
     return CommandResults(
@@ -1048,13 +1072,15 @@ def ruleset_create_command(client: PolicyComputeEngine, args: Dict[str, Any]) ->
     try:
         response = client.rule_sets.create(body={"name": name, "scopes": [[]]})
         json_response = response.to_json()
+        json_response["already_exists"] = False
         readable_output = prepare_ruleset_create_output(json_response, name)
     except IllumioException:
         rule_sets = client.rule_sets.get(params={"name": name})
         for rule_set in rule_sets:
             json_response = rule_set.to_json()
+            json_response["already_exists"] = True
             if json_response.get("name") == name:
-                readable_output = prepare_ruleset_create_output(json_response, name)
+                readable_output = prepare_ruleset_create_output(json_response, name, already_exists=True)
 
     return CommandResults(
         outputs_prefix="Illumio.Ruleset",

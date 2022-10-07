@@ -261,6 +261,9 @@ script:
     - contextPath: Illumio.VirtualService.service_addresses
       description: Service addresses of the virtual service.
       type: Unknown
+    - contextPath: Illumio.VirtualService.already_exists
+      description: If virtual service already exists or not.
+      type: Boolean
   - arguments:
     - default: false
       description: |-
@@ -1239,6 +1242,9 @@ script:
       description: Array of permissions for the entity to the current user - an empty
         array implies read only access.
       type: Unknown
+    - contextPath: Illumio.EnforcementBoundary.already_exists
+      description: If enforcement boundary already exists.
+      type: Boolean
   - arguments:
     - auto: PREDEFINED
       default: false
@@ -1489,6 +1495,9 @@ script:
       description: Array of permissions for the entity to the current user - an empty
         array implies read-only access.
       type: Unknown
+    - contextPath: Illumio.Ruleset.already_exists
+      description: If ruleset already exists or not.
+      type: Boolean
   - arguments:
     - default: false
       description: HREF of the ruleset in which to create the rule.
