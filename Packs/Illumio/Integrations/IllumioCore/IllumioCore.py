@@ -31,6 +31,9 @@ MAX_PORT = 65535
 HR_DATE_FORMAT = "%d %b %Y, %I:%M %p"
 VALID_POLICY_DECISIONS = ["potentially_blocked", "blocked", "unknown", "allowed"]
 VALID_PROTOCOLS = ["tcp", "udp"]
+EXISTING_VIRTUAL_SERVICE = "Name must be unique"
+EXISTING_ENFORCEMENT_BOUNDARY = "Rule name already in use"
+EXISTING_RULESET = "Rule set name is already in use"
 
 
 class Protocol(Enum):
@@ -291,8 +294,9 @@ def prepare_virtual_service_output(response: Dict, already_exists: bool = False)
     Returns:
         markdown string to be displayed in the war room.
     """
+    hr_output = []
     for service_port in response.get("service_ports", []):
-        hr_output = {
+        hr_output.append({
             "Virtual Service HREF": response.get("href"),
             "Created At": arg_to_datetime(response["created_at"]).strftime(  # type: ignore
                 HR_DATE_FORMAT) if response.get("created_at") else None,
@@ -302,9 +306,9 @@ def prepare_virtual_service_output(response: Dict, already_exists: bool = False)
             "Description": response.get("description"),
             "Service Port": service_port.get("port") if "port" in service_port else "all ports have been selected",
             "Service Protocol": Protocol(service_port.get("proto")).name,
-        }
+        })
 
-    headers = list(hr_output.keys()) if hr_output else []
+    headers = list(hr_output[0].keys()) if hr_output else []
 
     if already_exists:
         title = "Virtual Service {} already exists.".format(response.get("href"))
@@ -709,13 +713,19 @@ def virtual_service_create_command(client: PolicyComputeEngine, args: Dict[str, 
         virtual_service_json = virtual_service.to_json()
         virtual_service_json["already_exists"] = False
         readable_output = prepare_virtual_service_output(virtual_service_json)
-    except IllumioException:
-        virtual_services = client.virtual_services.get(params={"name": name})
-        for virtual_service in virtual_services:
-            virtual_service_json = virtual_service.to_json()
-            virtual_service_json["already_exists"] = True
-            if virtual_service_json.get("name") == name:
-                readable_output = prepare_virtual_service_output(virtual_service_json, already_exists=True)
+    except Exception as e:
+        if EXISTING_VIRTUAL_SERVICE in str(e):
+            try:
+                virtual_services = client.virtual_services.get(params={"name": name})
+                for virtual_service in virtual_services:
+                    if virtual_service.name == name:
+                        virtual_service_json = virtual_service.to_json()
+                        readable_output = prepare_virtual_service_output(virtual_service_json, already_exists=True)
+                        break
+            except Exception as e:
+                raise Exception("Encountered error while retrieving virtual service: {}".format(e))
+        else:
+            raise Exception("Encountered error while creating virtual service: {}".format(e))
 
     return CommandResults(
         outputs_prefix="Illumio.VirtualService",
@@ -920,27 +930,32 @@ def enforcement_boundary_create_command(
         providers=providers,  # type: ignore
         ingress_services=[{"port": port, "proto": proto}],
     )
-    enforcement_boundary_json = ""
+    enforcement_boundary_json = {}
     try:
         enforcement_boundary = client.enforcement_boundaries.create(enforcement_boundary_rule)  # type: ignore
-        enforcement_boundary_href = enforcement_boundary.href
         enforcement_boundary_json = enforcement_boundary.to_json()
-        enforcement_boundary_json["href"] = enforcement_boundary_href
-        enforcement_boundary_json["already_exists"] = False
+        enforcement_boundary_json["href"] = enforcement_boundary.href  # type: ignore
+        enforcement_boundary_json["already_exists"] = False  # type: ignore
         readable_output = prepare_enforcement_boundary_create_output(
             enforcement_boundary_json
         )
-    except IllumioException:
-        enforcement_boundaries = client.enforcement_boundaries.get(params={"name": name})
-        for enforcement_boundary in enforcement_boundaries:
-            enforcement_boundary_json = enforcement_boundary.to_json()
-            enforcement_boundary_href = enforcement_boundary.href
-            enforcement_boundary_json["href"] = enforcement_boundary_href
-            enforcement_boundary_json["already_exists"] = True
-            if enforcement_boundary_json.get("name") == name:
-                readable_output = prepare_enforcement_boundary_create_output(
-                    enforcement_boundary_json, already_exists=True
-                )
+    except Exception as e:
+        if EXISTING_ENFORCEMENT_BOUNDARY in str(e):
+            try:
+                enforcement_boundaries = client.enforcement_boundaries.get(params={"name": name})
+                for enforcement_boundary in enforcement_boundaries:
+                    if enforcement_boundary.name == name:
+                        enforcement_boundary_json = enforcement_boundary.to_json()
+                        enforcement_boundary_json["href"] = enforcement_boundary.href  # type: ignore
+                        enforcement_boundary_json["already_exists"] = True  # type: ignore
+                        readable_output = prepare_enforcement_boundary_create_output(
+                            enforcement_boundary_json, already_exists=True
+                        )
+                        break
+            except Exception as e:
+                raise Exception("Encountered error while retrieving enforcement boundary: {}".format(e))
+        else:
+            raise Exception("Encountered error while creating enforcement boundary: {}".format(e))
 
     return CommandResults(
         outputs_prefix="Illumio.EnforcementBoundary",
@@ -1074,13 +1089,20 @@ def ruleset_create_command(client: PolicyComputeEngine, args: Dict[str, Any]) ->
         json_response = response.to_json()
         json_response["already_exists"] = False
         readable_output = prepare_ruleset_create_output(json_response, name)
-    except IllumioException:
-        rule_sets = client.rule_sets.get(params={"name": name})
-        for rule_set in rule_sets:
-            json_response = rule_set.to_json()
-            json_response["already_exists"] = True
-            if json_response.get("name") == name:
-                readable_output = prepare_ruleset_create_output(json_response, name, already_exists=True)
+    except Exception as e:
+        if EXISTING_RULESET in str(e):
+            try:
+                rule_sets = client.rule_sets.get(params={"name": name})
+                for rule_set in rule_sets:
+                    if rule_set.name == name:
+                        json_response = rule_set.to_json()
+                        json_response["already_exists"] = True
+                        readable_output = prepare_ruleset_create_output(json_response, name, already_exists=True)
+                        break
+            except Exception as e:
+                raise Exception("Encountered error while creating rule set: {}".format(e))
+        else:
+            raise Exception("Encountered error while creating Ruleset: {}".format(e))
 
     return CommandResults(
         outputs_prefix="Illumio.Ruleset",
