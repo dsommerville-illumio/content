@@ -310,10 +310,10 @@ def prepare_virtual_service_output(response: Dict, already_exists: bool = False)
 
     headers = list(hr_output[0].keys()) if hr_output else []
 
+    title = "Virtual Service:\n#### Successfully created virtual service: {}\n".format(response.get("href"))
+
     if already_exists:
-        title = "Virtual Service {} already exists.".format(response.get("href"))
-    else:
-        title = "Virtual Service:\n#### Successfully created virtual service: {}\n".format(response.get("href"))
+        demisto.info("Virtual Service {} already exists.".format(response.get("href")))
 
     return tableToMarkdown(title, hr_output, headers=headers, removeNull=True)
 
@@ -462,13 +462,9 @@ def prepare_enforcement_boundary_create_output(response: Dict, already_exists: b
     headers = list(hr_outputs.keys())
 
     if already_exists:
-        title = "Enforcement Boundary {} already exists:\n".format(response.get("href"))
-    else:
-        title = "Enforcement Boundary:\n"
+        demisto.info("Enforcement boundary {} already exists.".format(response.get("name")))
 
-    return tableToMarkdown(
-        title, hr_outputs, headers=headers, removeNull=True
-    )
+    return tableToMarkdown("Enforcement Boundary:\n", hr_outputs, headers=headers, removeNull=True)
 
 
 def prepare_update_enforcement_mode_output(response: List):
@@ -580,11 +576,10 @@ def prepare_ruleset_create_output(response: Dict, name: Optional[Any], already_e
     }
 
     headers = list(hr_output.keys())
+    title = "Ruleset {} has been created successfully.".format(name)
 
     if already_exists:
-        title = "Ruleset {} already exists.".format(name)
-    else:
-        title = "Ruleset {} has been created successfully.".format(name)
+        demisto.info("Ruleset {} already exists.".format(name))
 
     return tableToMarkdown(title, hr_output, headers=headers,
                            removeNull=True)
@@ -725,7 +720,7 @@ def virtual_service_create_command(client: PolicyComputeEngine, args: Dict[str, 
             except Exception as e:
                 raise Exception("Encountered error while retrieving virtual service: {}".format(e))
         else:
-            raise Exception("Encountered error while creating virtual service: {}".format(e))
+            raise Exception("Encountered error while creating virtual service: {}".format(e))  # type: ignore
 
     return CommandResults(
         outputs_prefix="Illumio.VirtualService",
@@ -934,7 +929,6 @@ def enforcement_boundary_create_command(
     try:
         enforcement_boundary = client.enforcement_boundaries.create(enforcement_boundary_rule)  # type: ignore
         enforcement_boundary_json = enforcement_boundary.to_json()
-        enforcement_boundary_json["href"] = enforcement_boundary.href  # type: ignore
         enforcement_boundary_json["already_exists"] = False  # type: ignore
         readable_output = prepare_enforcement_boundary_create_output(
             enforcement_boundary_json
@@ -946,7 +940,6 @@ def enforcement_boundary_create_command(
                 for enforcement_boundary in enforcement_boundaries:
                     if enforcement_boundary.name == name:
                         enforcement_boundary_json = enforcement_boundary.to_json()
-                        enforcement_boundary_json["href"] = enforcement_boundary.href  # type: ignore
                         enforcement_boundary_json["already_exists"] = True  # type: ignore
                         readable_output = prepare_enforcement_boundary_create_output(
                             enforcement_boundary_json, already_exists=True
@@ -955,7 +948,7 @@ def enforcement_boundary_create_command(
             except Exception as e:
                 raise Exception("Encountered error while retrieving enforcement boundary: {}".format(e))
         else:
-            raise Exception("Encountered error while creating enforcement boundary: {}".format(e))
+            raise Exception("Encountered error while creating enforcement boundary: {}".format(e))  # type: ignore
 
     return CommandResults(
         outputs_prefix="Illumio.EnforcementBoundary",
@@ -1102,7 +1095,7 @@ def ruleset_create_command(client: PolicyComputeEngine, args: Dict[str, Any]) ->
             except Exception as e:
                 raise Exception("Encountered error while creating rule set: {}".format(e))
         else:
-            raise Exception("Encountered error while creating Ruleset: {}".format(e))
+            raise Exception("Encountered error while creating Ruleset: {}".format(e))  # type: ignore
 
     return CommandResults(
         outputs_prefix="Illumio.Ruleset",
