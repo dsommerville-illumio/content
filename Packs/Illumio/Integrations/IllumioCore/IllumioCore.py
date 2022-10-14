@@ -31,6 +31,10 @@ MAX_PORT = 65535
 HR_DATE_FORMAT = "%d %b %Y, %I:%M %p"
 VALID_POLICY_DECISIONS = ["potentially_blocked", "blocked", "unknown", "allowed"]
 VALID_PROTOCOLS = ["tcp", "udp"]
+EXISTING_VIRTUAL_SERVICE = "Name must be unique"
+EXISTING_ENFORCEMENT_BOUNDARY = "Rule name already in use"
+EXISTING_RULESET = "Rule set name is already in use"
+EXISTING_OBJECT = "One or more specified objects either don't exist, or do not have a draft version."
 
 
 class Protocol(Enum):
@@ -121,7 +125,7 @@ def generate_change_description_for_object_provision(hrefs: List[str]) -> str:
 
 
 def validate_traffic_analysis_arguments(
-    port: Optional[int], policy_decisions: List, protocol: str
+        port: Optional[int], policy_decisions: List, protocol: str
 ) -> None:
     """Validate arguments for traffic-analysis command.
 
@@ -166,11 +170,11 @@ def validate_virtual_service_arguments(port: Optional[int], protocol: str) -> No
 
 
 def validate_workloads_list_arguments(
-    max_results: Optional[int],
-    online: Optional[str],
-    managed: Optional[str],
-    enforcement_mode: Optional[str],
-    visibility_level: Optional[str],
+        max_results: Optional[int],
+        online: Optional[str],
+        managed: Optional[str],
+        enforcement_mode: Optional[str],
+        visibility_level: Optional[str],
 ) -> None:
     """Validate arguments for workloads-list command.
 
@@ -206,7 +210,7 @@ def validate_workloads_list_arguments(
 
 
 def validate_enforcement_boundary_create_arguments(
-    port: Optional[int], protocol: str
+        port: Optional[int], protocol: str
 ) -> None:
     """Validate arguments for enforcement-boundary-create command.
 
@@ -243,7 +247,7 @@ def validate_ip_lists_get_arguments(max_results: Optional[int], ip_address: Opti
         if not is_ipv6_valid(ip_address):
             try:
                 socket.inet_aton(ip_address)  # type: ignore
-            except: # noqa
+            except:  # noqa
                 raise InvalidValueError(
                     message="{} is an invalid value for ip_address.".format(ip_address)
                 )
@@ -285,7 +289,7 @@ def prepare_virtual_service_output(response: Dict) -> str:
     """Prepare human-readable output for virtual-service-create command.
 
     Args:
-        response: result returned after creating Virtual Service.
+        response: Result returned after creating Virtual Service.
 
     Returns:
         markdown string to be displayed in the war room.
@@ -305,7 +309,8 @@ def prepare_virtual_service_output(response: Dict) -> str:
         })
 
     headers = list(hr_output[0].keys()) if hr_output else []
-    title = f'Virtual Service:\n#### Successfully created virtual service: {response.get("href")}\n'
+
+    title = "Virtual Service:\n#### Successfully created virtual service: {}\n".format(response.get("href"))
     return tableToMarkdown(title, hr_output, headers=headers, removeNull=True)
 
 
@@ -384,17 +389,17 @@ def prepare_workload_get_output(response: Dict) -> str:
     return tableToMarkdown(title, hr_outputs, headers=headers, removeNull=True)
 
 
-def prepare_workloads_list_output(workloads_list: List) -> str:
+def prepare_workloads_list_output(response: List) -> str:
     """Prepare human-readable output for workloads-list command.
 
     Args:
-        workloads_list: list of workloads in dict format.
+        response: list of workloads in dict format.
 
     Returns:
         markdown string to be displayed in the war room.
     """
     hr_outputs = []
-    for workload in workloads_list:
+    for workload in response:
         hr_outputs.append(
             {
                 "Workload HREF": workload.get("href"),
@@ -419,7 +424,7 @@ def prepare_enforcement_boundary_create_output(response: Dict) -> str:
     """Prepare human-readable output for enforcement-boundary-create command.
 
     Args:
-        response: result returned after creating enforcement boundary.
+        response: Result returned after creating enforcement boundary.
 
     Returns:
         markdown string to be displayed in the war room.
@@ -450,9 +455,7 @@ def prepare_enforcement_boundary_create_output(response: Dict) -> str:
     }
 
     headers = list(hr_outputs.keys())
-    return tableToMarkdown(
-        "Enforcement Boundary:\n", hr_outputs, headers=headers, removeNull=True
-    )
+    return tableToMarkdown("Enforcement Boundary:\n", hr_outputs, headers=headers, removeNull=True)
 
 
 def prepare_update_enforcement_mode_output(response: List):
@@ -563,8 +566,9 @@ def prepare_ruleset_create_output(response: Dict, name: Optional[Any]):
     }
 
     headers = list(hr_output.keys())
+    title = "Ruleset {} has been created successfully.".format(name)
 
-    return tableToMarkdown("Ruleset {} has been created successfully.".format(name), hr_output, headers=headers,
+    return tableToMarkdown(title, hr_output, headers=headers,
                            removeNull=True)
 
 
@@ -686,9 +690,23 @@ def virtual_service_create_command(client: PolicyComputeEngine, args: Dict[str, 
     proto = convert_protocol(protocol)
 
     service = VirtualService(name=name, service_ports=[ServicePort(port=port, proto=proto)])  # type: ignore
-    virtual_service = client.virtual_services.create(service)  # type: ignore
+    try:
+        virtual_service = client.virtual_services.create(service)  # type: ignore
+        virtual_service_json = virtual_service.to_json()
+    except Exception as e:
+        if EXISTING_VIRTUAL_SERVICE in str(e):
+            try:
+                virtual_services = client.virtual_services.get(params={"name": name})
+                demisto.info("Virtual service already exists.")
+                for virtual_service in virtual_services:
+                    if virtual_service.name == name:
+                        virtual_service_json = virtual_service.to_json()
+                        break
+            except Exception as e:
+                raise Exception("Encountered error while retrieving virtual service: {}".format(e))
+        else:
+            raise Exception("Encountered error while creating virtual service: {}".format(e))  # type: ignore
 
-    virtual_service_json = virtual_service.to_json()
     readable_output = prepare_virtual_service_output(virtual_service_json)
 
     return CommandResults(
@@ -720,7 +738,10 @@ def service_binding_create_command(client: PolicyComputeEngine, args: Dict[str, 
         client.virtual_services.get_by_reference(virtual_service)
     except IllumioException as e:
         raise InvalidValueError(
-            message="no active record for virtual service with HREF {}".format(virtual_service)) from e
+            message="no active record for virtual service with HREF {}".format(
+                virtual_service
+            )
+        ) from e
 
     service_bindings = [
         ServiceBinding(virtual_service=Reference(href=virtual_service), workload=Reference(href=href))  # type: ignore
@@ -729,13 +750,15 @@ def service_binding_create_command(client: PolicyComputeEngine, args: Dict[str, 
 
     response = client.service_bindings.create(service_bindings)  # type: ignore
     results = json.loads(json.dumps(response, cls=IllumioEncoder))
+    context_data = {}
+    context_data["hrefs"] = [service.get("href", "") for service in results.get("service_bindings", [])]
     readable_output = prepare_service_binding_output(results)
 
     return CommandResults(
         outputs_prefix="Illumio.ServiceBinding",
         readable_output=readable_output,
         outputs_key_field="href",
-        outputs=remove_empty_elements(results),
+        outputs=remove_empty_elements(context_data),
         raw_response=results,
     )
 
@@ -757,18 +780,26 @@ def object_provision_command(client: PolicyComputeEngine, args: Dict[str, Any]) 
     change_description = generate_change_description_for_object_provision(
         hrefs=security_policy_objects
     )
-    response_object = client.provision_policy_changes(
-        change_description=change_description, hrefs=security_policy_objects
-    )
-    response_dict = response_object.to_json()
-    hr_output = prepare_object_provision_output(response_dict)
+    response_dict = {}
+    try:
+        response_object = client.provision_policy_changes(
+            change_description=change_description, hrefs=security_policy_objects
+        )
+        response_dict = response_object.to_json()
+        hr_output = prepare_object_provision_output(response_dict)
 
-    # Converting draft HREFs to active
-    provisioned_hrefs = [
-        convert_draft_href_to_active(href) for href in security_policy_objects
-    ]
+        # Converting draft HREFs to active
+        provisioned_hrefs = [
+            convert_draft_href_to_active(href) for href in security_policy_objects
+        ]
 
-    response_dict["provisioned_hrefs"] = provisioned_hrefs
+        response_dict["provisioned_hrefs"] = provisioned_hrefs
+    except Exception as e:
+        if EXISTING_OBJECT not in str(e):
+            raise Exception("Encountered error while provisioning security policy object: {}".format(e))
+        else:
+            hr_output = "### Security policy object(s) already provisioned: {}.".format(
+                ", ".join(security_policy_objects))
 
     return CommandResults(
         outputs_prefix="Illumio.PolicyState",
@@ -857,7 +888,7 @@ def workloads_list_command(client: PolicyComputeEngine, args: Dict[str, Any]) ->
 
 
 def enforcement_boundary_create_command(
-    client: PolicyComputeEngine, args: Dict[str, Any]
+        client: PolicyComputeEngine, args: Dict[str, Any]
 ) -> CommandResults:
     """Create an enforcement boundary.
 
@@ -889,9 +920,23 @@ def enforcement_boundary_create_command(
         providers=providers,  # type: ignore
         ingress_services=[{"port": port, "proto": proto}],
     )
-    enforcement_boundary = client.enforcement_boundaries.create(enforcement_boundary_rule)  # type: ignore
-
-    enforcement_boundary_json = enforcement_boundary.to_json()
+    enforcement_boundary_json = {}
+    try:
+        enforcement_boundary = client.enforcement_boundaries.create(enforcement_boundary_rule)  # type: ignore
+        enforcement_boundary_json = enforcement_boundary.to_json()
+    except Exception as e:
+        if EXISTING_ENFORCEMENT_BOUNDARY in str(e):
+            try:
+                enforcement_boundaries = client.enforcement_boundaries.get(params={"name": name})
+                demisto.info("Enforcement boundary already exists.")
+                for enforcement_boundary in enforcement_boundaries:
+                    if enforcement_boundary.name == name:
+                        enforcement_boundary_json = enforcement_boundary.to_json()
+                        break
+            except Exception as e:
+                raise Exception("Encountered error while retrieving enforcement boundary: {}".format(e))
+        else:
+            raise Exception("Encountered error while creating enforcement boundary: {}".format(e))  # type: ignore
 
     readable_output = prepare_enforcement_boundary_create_output(
         enforcement_boundary_json
@@ -1024,17 +1069,29 @@ def ruleset_create_command(client: PolicyComputeEngine, args: Dict[str, Any]) ->
     """
     name = args.get("name")
     validate_required_parameters(name=name)
-
-    response = client.rule_sets.create(body={"name": name, "scopes": [[]]})
-    json_response = response.to_json()
+    try:
+        response = client.rule_sets.create(body={"name": name, "scopes": [[]]})
+        json_response = response.to_json()
+    except Exception as e:
+        if EXISTING_RULESET in str(e):
+            try:
+                rule_sets = client.rule_sets.get(params={"name": name})
+                demisto.info("Ruleset already exists.")
+                for rule_set in rule_sets:
+                    if rule_set.name == name:
+                        json_response = rule_set.to_json()
+                        break
+            except Exception as e:
+                raise Exception("Encountered error while creating Ruleset: {}".format(e))
+        else:
+            raise Exception("Encountered error while creating Ruleset: {}".format(e))  # type: ignore
 
     readable_output = prepare_ruleset_create_output(json_response, name)
-    outputs_response = remove_empty_elements(json_response)
 
     return CommandResults(
         outputs_prefix="Illumio.Ruleset",
         outputs_key_field="href",
-        outputs=outputs_response,
+        outputs=remove_empty_elements(json_response),
         readable_output=readable_output,
         raw_response=json_response
     )
