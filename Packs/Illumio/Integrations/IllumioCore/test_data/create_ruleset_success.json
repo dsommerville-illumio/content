@@ -1,5 +1,4 @@
-{"already_exists": false,
- "caps": ["write", "provision"],
+{"caps": ["write", "provision"],
  "created_at": "2022-08-17T11:56:38.215Z",
  "created_by": {"href": "/users/68"},
  "enabled": true,

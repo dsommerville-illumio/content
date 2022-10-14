@@ -1,5 +1,4 @@
-{"already_exists": false,
- "consumers": [{"actors": "ams"}],
+{"consumers": [{"actors": "ams"}],
  "href": "/orgs/1/sec_policy/draft/enforcement_boundaries/981",
  "ingress_services": [{"port": 1, "proto": 17}],
  "name": "test_enforcement_boundary_1",
