@@ -1,5 +1,5 @@
 Connects to Illumio Core APIs to perform investigative and restorative actions.
-This integration was integrated and tested with version 1.1.1 of IllumioCore
+This integration was integrated and tested with version 1.1.0 of IllumioCore
 
 ## Configure Illumio Core on Cortex XSOAR
 
