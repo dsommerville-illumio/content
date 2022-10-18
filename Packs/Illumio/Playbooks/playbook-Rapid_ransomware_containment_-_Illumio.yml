@@ -37,10 +37,10 @@ tasks:
     isautoswitchedtoquietmode: false
   '1':
     id: '1'
-    taskid: ea89692b-f449-40ec-8ecd-34913ca7467c
+    taskid: 765148d3-eb46-4180-8155-d4e825b8e82e
     type: regular
     task:
-      id: ea89692b-f449-40ec-8ecd-34913ca7467c
+      id: 765148d3-eb46-4180-8155-d4e825b8e82e
       version: -1
       name: Get traffic analysis
       description: Retrieves traffic flow of a particular port & protocol within the specified time range based on policy decisions.
@@ -159,8 +159,8 @@ tasks:
     view: |-
       {
         "position": {
-          "x": -510,
-          "y": 1120
+          "x": -520,
+          "y": 1150
         }
       }
     note: false
@@ -195,7 +195,7 @@ tasks:
     view: |-
       {
         "position": {
-          "x": -510,
+          "x": -520,
           "y": 1340
         }
       }
@@ -221,7 +221,7 @@ tasks:
       brand: ''
     nexttasks:
       '#none#':
-      - '5'
+      - '31'
     scriptarguments:
       virtual_service:
         complex:
@@ -235,8 +235,8 @@ tasks:
     view: |-
       {
         "position": {
-          "x": -510,
-          "y": 1545
+          "x": -520,
+          "y": 1525
         }
       }
     note: false
@@ -304,8 +304,8 @@ tasks:
     view: |-
       {
         "position": {
-          "x": -510,
-          "y": 1750
+          "x": -520,
+          "y": 1880
         }
       }
     note: false
@@ -317,10 +317,10 @@ tasks:
     isautoswitchedtoquietmode: false
   '7':
     id: '7'
-    taskid: d5ad8e4e-b93a-4bba-8f25-bd4ff851f173
+    taskid: b706e839-fd7d-43d1-8a7a-17f2e853f527
     type: regular
     task:
-      id: d5ad8e4e-b93a-4bba-8f25-bd4ff851f173
+      id: b706e839-fd7d-43d1-8a7a-17f2e853f527
       version: -1
       name: Create rule
       description: Creates & assigns rules to a particular ruleset. Added or updated Rules will remain in draft state until their containing Rule Set is provisioned using the "illumio-object-provision" command.
@@ -333,7 +333,9 @@ tasks:
       - '12'
     scriptarguments:
       consumers:
-        simple: /orgs/1/sec_policy/draft/ip_lists/1
+        complex:
+          root: Illumio.IPLists
+          accessor: href
       providers:
         complex:
           root: Illumio.VirtualService
@@ -348,8 +350,8 @@ tasks:
     view: |-
       {
         "position": {
-          "x": -510,
-          "y": 1945
+          "x": -520,
+          "y": 2055
         }
       }
     note: false
@@ -433,7 +435,7 @@ tasks:
       {
         "position": {
           "x": -260,
-          "y": 2360
+          "y": 2460
         }
       }
     note: false
@@ -469,7 +471,7 @@ tasks:
       {
         "position": {
           "x": -260,
-          "y": 2580
+          "y": 2620
         }
       }
     note: false
@@ -504,8 +506,8 @@ tasks:
     view: |-
       {
         "position": {
-          "x": -510,
-          "y": 2130
+          "x": -520,
+          "y": 2240
         }
       }
     note: false
@@ -544,48 +546,47 @@ tasks:
     isautoswitchedtoquietmode: false
   '16':
     id: '16'
-    taskid: 177f9203-a098-43ea-83cc-a63bbac5898f
+    taskid: d16b9f43-a716-4a5f-8636-b2edf4612e39
     type: condition
     task:
-      id: 177f9203-a098-43ea-83cc-a63bbac5898f
+      id: d16b9f43-a716-4a5f-8636-b2edf4612e39
       version: -1
-      name: Do you want to update the enforcement mode?
+      name: Is update enforcement mode?
       description: Checks if user want to update enforcement mode or not.
       type: condition
       iscommand: false
       brand: ''
     nexttasks:
-      No:
-      - '13'
-      Yes:
+      '#default#':
       - '17'
+      no:
+      - '13'
     separatecontext: false
+    conditions:
+    - label: no
+      condition:
+      - - operator: isEqualString
+          left:
+            value:
+              complex:
+                root: inputs.Update the enforcement mode?
+                transformers:
+                - operator: trim
+                - operator: toLowerCase
+            iscontext: true
+          right:
+            value:
+              simple: no
     view: |-
       {
         "position": {
           "x": -260,
-          "y": 2760
+          "y": 2800
         }
       }
     note: false
     timertriggers: []
     ignoreworker: false
-    message:
-      to:
-      subject:
-      body:
-        simple: Do you want to update the enforcement mode?
-      methods: []
-      format: ''
-      bcc:
-      cc:
-      timings:
-        retriescount: 2
-        retriesinterval: 360
-        completeafterreplies: 1
-      replyOptions:
-      - Yes
-      - No
     skipunavailable: false
     quietmode: 0
     isoversize: false
@@ -622,7 +623,7 @@ tasks:
       {
         "position": {
           "x": -520,
-          "y": 2990
+          "y": 3010
         }
       }
     note: false
@@ -818,10 +819,10 @@ tasks:
     isautoswitchedtoquietmode: false
   '21':
     id: '21'
-    taskid: cc4ab3d0-b251-47cb-8544-864e4728c97f
+    taskid: 9c44fa54-cb49-43f4-8bc1-02ef20a1cf43
     type: condition
     task:
-      id: cc4ab3d0-b251-47cb-8544-864e4728c97f
+      id: 9c44fa54-cb49-43f4-8bc1-02ef20a1cf43
       version: -1
       name: Are workloads available?
       description: Checks wether workloads are available or not for a given port and protocol.
@@ -1044,10 +1045,45 @@ tasks:
     quietmode: 0
     isoversize: false
     isautoswitchedtoquietmode: false
+  '31':
+    id: '31'
+    taskid: 10ad2463-e4ee-4456-84ef-52ee9f0390e9
+    type: regular
+    task:
+      id: 10ad2463-e4ee-4456-84ef-52ee9f0390e9
+      version: -1
+      name: Get ip lists
+      description: Retrieves the list of IPs based on the query parameters.
+      script: '|||illumio-ip-lists-get'
+      type: regular
+      iscommand: true
+      brand: ''
+    nexttasks:
+      '#none#':
+      - '5'
+    scriptarguments:
+      name:
+        simple: Any (0.0.0.0/0 and ::/0)
+    separatecontext: false
+    view: |-
+      {
+        "position": {
+          "x": -520,
+          "y": 1700
+        }
+      }
+    note: false
+    timertriggers: []
+    ignoreworker: false
+    skipunavailable: false
+    quietmode: 0
+    isoversize: false
+    isautoswitchedtoquietmode: false
 view: |-
   {
     "linkLabelsPosition": {
-      "16_13_No": 0.2,
+      "16_13_no": 0.16,
+      "16_17_#default#": 0.54,
       "18_9_no": 0.19,
       "21_9_#default#": 0.18,
       "22_30_#default#": 0.57
@@ -1078,6 +1114,12 @@ inputs:
     simple: Yes
   required: false
   description: Do You want to allow traffic on this port? (Yes or No)
+  playbookInputQuery:
+- key: Update the enforcement mode?
+  value:
+    simple: Yes
+  required: false
+  description: Do you want to update the enforcement mode?(Yes or No)
   playbookInputQuery:
 outputs: []
 tests:

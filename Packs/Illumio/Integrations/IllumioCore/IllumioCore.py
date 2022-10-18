@@ -95,7 +95,7 @@ def trim_spaces_from_args(args: Dict) -> Dict:
     return args
 
 
-def extract_values_from_dictionary(response: List) -> str:
+def extract_values_from_dictionary(response: List) -> List:
     """Extract values from dictionary.
     Args:
         response: Response from the SDK.
@@ -103,10 +103,13 @@ def extract_values_from_dictionary(response: List) -> str:
     Returns:
         value of the key.
     """
-    for key, value in response[0].items():
-        if key == "actors":
-            return value
-    return value.get("href")
+    values = []
+    for item in response:
+        for key, value in item.items():
+            if key == "actors":
+                return [value]
+        values.append(value.get("href"))
+    return values
 
 
 def generate_change_description_for_object_provision(hrefs: List[str]) -> str:
@@ -1121,15 +1124,35 @@ def rule_create_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> Co
     resolve_providers_as = argToList(resolve_providers_as)
     resolve_consumers_as = argToList(resolve_consumers_as)
 
-    # Building rule
-    rule = Rule.build(
-        ingress_services=ingress_services,
-        consumers=consumers, providers=providers,
-        resolve_consumers_as=resolve_consumers_as,
-        resolve_providers_as=resolve_providers_as
-    )
+    # Building params to check whether rule is present in particular ruleset or not
+    params = {"ingress_services": sorted(ingress_services), "providers": sorted(providers),
+              "consumers": sorted(consumers),
+              "resolve_providers_as": sorted(resolve_providers_as), "resolve_consumers_as": sorted(resolve_consumers_as)
+              }
 
-    response = client.rules.create(rule, parent=ruleset_href)
+    ruleset = client.rule_sets.get_by_reference(ruleset_href)
+    ruleset_json = ruleset.to_json()
+    for rules in ruleset_json.get("rules", []):
+        existing_rule = {"ingress_services": sorted([href.get('href') for href in rules.get("ingress_services", {})]),
+                         "providers": sorted(extract_values_from_dictionary(rules.get("providers"))),
+                         "consumers": sorted(extract_values_from_dictionary(rules.get("consumers"))),
+                         "resolve_providers_as": sorted(rules.get("resolve_labels_as").get("providers")),
+                         "resolve_consumers_as": sorted(rules.get("resolve_labels_as").get("consumers"))
+                         }
+        if params == existing_rule:
+            demisto.info("Found existing Rule bounded to the Ruleset: {}.".format(ruleset_href))
+            rule_href = rules.get("href")
+            response = client.rules.get_by_reference(rule_href)
+            break
+    else:
+        rule = Rule.build(
+            ingress_services=ingress_services,
+            consumers=consumers, providers=providers,
+            resolve_consumers_as=resolve_consumers_as,
+            resolve_providers_as=resolve_providers_as
+        )
+        response = client.rules.create(rule, parent=ruleset_href)
+
     response = response.to_json()
     readable_output = prepare_rule_create_output(response)  # type: ignore
 

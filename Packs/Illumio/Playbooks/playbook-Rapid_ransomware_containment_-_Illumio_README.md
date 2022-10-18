@@ -9,20 +9,21 @@ This playbook uses the following sub-playbooks, integrations, and scripts.
 * Update enforcement mode - Illumio
 
 ### Integrations
-This playbook does not use any integrations.
+* IllumioCore
 
 ### Scripts
 * Print
 
 ### Commands
-* illumio-virtual-service-create
 * illumio-object-provision
-* illumio-rule-create
+* illumio-workloads-list
+* illumio-ip-lists-get
+* illumio-ruleset-create
 * illumio-enforcement-boundary-create
 * illumio-service-binding-create
+* illumio-virtual-service-create
+* illumio-rule-create
 * illumio-traffic-analysis
-* illumio-workloads-list
-* illumio-ruleset-create
 
 ## Playbook Inputs
 ---
@@ -30,9 +31,9 @@ This playbook does not use any integrations.
 | **Name** | **Description** | **Default Value** | **Required** |
 | --- | --- | --- | --- |
 | Port | Provide Port to be blocked. |  | Required |
-| Indicator Query | Indicators matching the indicator query will be used as playbook input |  | Optional |
-| Protocol | Protocol of Port. |  TCP | Optional |
-| Allow Traffic | Do You want to allow traffic on this port? \(Yes or No\) | Yes | Optional |
+| Protocol | Protocol of Port. | TCP | Optional |
+| Allow Traffic? | Do You want to allow traffic on this port? \(Yes or No\) | Yes | Optional |
+| Update the enforcement mode? | Do you want to update the enforcement mode?\(Yes or No\) | Yes | Optional |
 
 ## Playbook Outputs
 ---
