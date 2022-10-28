@@ -386,6 +386,14 @@ def ruleset_create_success_hr():
 
 
 @pytest.fixture(scope="module")
+def ruleset_get_success():
+    """Retrieve the json response for ruleset get."""
+    return util_load_json(
+        os.path.join(TEST_DATA_DIRECTORY, "get_ruleset_success.json")
+    )
+
+
+@pytest.fixture(scope="module")
 def rule_create_success():
     """Retrieve the json response for rule create."""
     return util_load_json(os.path.join(TEST_DATA_DIRECTORY, "create_rule_success.json"))
@@ -1554,16 +1562,22 @@ def test_rule_create_command_when_blank_arguments_provided(err_msg, args, mock_c
         assert str(err.value) == err_msg
 
 
-def test_rule_create_command_success(mock_client, rule_create_success, monkeypatch):
+def test_rule_create_command_success(mock_client, rule_create_success, ruleset_get_success, monkeypatch):
     """Test case scenario for rule-create-command when valid arguments provided to the command.
 
     Given:
-        - rule_create_success response and mock_client to call the function
+        - rule_create_success response, get_ruleset_success and mock_client to call the function
     When:
         - Valid arguments are provided to the command.
     Then:
         - Command should return valid raw response.
     """
+    monkeypatch.setattr(
+        illumio.pce.PolicyComputeEngine._PCEObjectAPI,
+        "get_by_reference",
+        lambda *a, **k: Rule.from_json(ruleset_get_success)
+    )
+
     monkeypatch.setattr(
         illumio.pce.PolicyComputeEngine._PCEObjectAPI,
         "create",
