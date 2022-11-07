@@ -60,7 +60,7 @@ TEST_DATA_DIRECTORY = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), "test_data"
 )
 INVALID_PORT_NUMBER_CREATE_VIRTUAL_SERVICE_EXCEPTION_MESSAGE = (
-    "{} is an invalid value for port. Value must be in 1 to 65535 or -1."
+    "{} is an invalid value for port. Value must be in 0 to 65535 or -1."
 )
 INVALID_PORT_NUMBER_EXCEPTION_MESSAGE = (
     "{} is an invalid value for port. Value must be in 1 to 65535."
@@ -659,8 +659,8 @@ def test_virtual_service_create_command_for_human_readable_with_protocol_as_udp(
             InvalidValueError,
         ),
         (
-            INVALID_PORT_NUMBER_CREATE_VIRTUAL_SERVICE_EXCEPTION_MESSAGE.format(0),
-            {"name": "test", "port": "0"},
+            INVALID_PORT_NUMBER_CREATE_VIRTUAL_SERVICE_EXCEPTION_MESSAGE.format(-3),
+            {"name": "test", "port": "-3"},
             InvalidValueError,
         ),
         (
@@ -1161,10 +1161,10 @@ def test_enforcement_boundary_create_command_human_readable(
             InvalidValueError,
         ),
         (
-            INVALID_PORT_NUMBER_EXCEPTION_MESSAGE.format(0),
+            INVALID_PORT_NUMBER_EXCEPTION_MESSAGE.format(-1),
             {
                 "name": "test",
-                "port": "0",
+                "port": "-1",
                 "providers": ["/orgs/1/labels/1"],
                 "consumers": "ams",
             },

@@ -26,7 +26,8 @@ SUPPORTED_VISIBILITY_LEVEL = [
     "flow_off",
     "enhanced_data_collection",
 ]
-MIN_PORT = 1
+TRAFFIC_MIN_PORT = 1
+MIN_PORT = 0
 MAX_PORT = 65535
 HR_DATE_FORMAT = "%d %b %Y, %I:%M %p"
 VALID_POLICY_DECISIONS = ["potentially_blocked", "blocked", "unknown", "allowed"]
@@ -137,7 +138,7 @@ def validate_traffic_analysis_arguments(
         policy_decisions: Policy decision to include in the search result.
         protocol: Communication protocol.
     """
-    if port < MIN_PORT or port > MAX_PORT:  # type: ignore
+    if port < TRAFFIC_MIN_PORT or port > MAX_PORT:  # type: ignore
         raise InvalidValueError(
             message="{} invalid value for port. Value must be in 1 to 65535.".format(
                 port
@@ -161,9 +162,9 @@ def validate_virtual_service_arguments(port: Optional[int], protocol: str) -> No
         port: Port number.
         protocol: Protocol name.
     """
-    if port != -1 and (port > MAX_PORT or port < MIN_PORT or port == 0):  # type: ignore
+    if port != -1 and (port > MAX_PORT or port < MIN_PORT):  # type: ignore
         raise InvalidValueError(
-            message="{} is an invalid value for port. Value must be in 1 to 65535 or -1.".format(
+            message="{} is an invalid value for port. Value must be in 0 to 65535 or -1.".format(
                 port
             )
         )
@@ -223,7 +224,7 @@ def validate_enforcement_boundary_create_arguments(
     """
     if port > MAX_PORT or port < MIN_PORT:  # type: ignore
         raise InvalidValueError(
-            message="{} is an invalid value for port. Value must be in 1 to 65535.".format(
+            message="{} is an invalid value for port. Value must be in 0 to 65535.".format(
                 port
             )
         )
