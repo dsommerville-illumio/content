@@ -75,7 +75,7 @@ def validate_required_parameters(**kwargs) -> None:
         Error if the value of the parameter is "", [], (), {}, None.
     """
     for key, value in kwargs.items():
-        if not value:
+        if not value and value is not False:
             raise ValueError(
                 "{} is a required parameter. Please provide correct value.".format(key)
             )
@@ -124,7 +124,7 @@ def generate_change_description_for_object_provision(hrefs: List[str]) -> str:
         str: A string with the current time in UTC.
     """
     return "XSOAR - {}\nProvisioning following objects:\n{}".format(
-        datetime.now().astimezone(timezone.utc).isoformat()[:-6], ", ".join(hrefs)
+        datetime.utcnow().isoformat(), ", ".join(hrefs)
     )
 
 
@@ -308,7 +308,7 @@ def prepare_virtual_service_output(response: Dict) -> str:
                 HR_DATE_FORMAT) if response.get("updated_at") else None,
             "Name": response.get("name"),
             "Description": response.get("description"),
-            "Service Port": service_port.get("port") if "port" in service_port else "all ports have been selected",
+            "Service Port": service_port.get("port", "all ports have been selected"),
             "Service Protocol": Protocol(service_port.get("proto")).name,
         })
 
@@ -606,7 +606,7 @@ def prepare_rule_create_output(response: Dict) -> str:
     return tableToMarkdown(title, hr_output, headers=headers, removeNull=True)
 
 
-def test_module(client: PolicyComputeEngine) -> str:
+def command_test_module(client: PolicyComputeEngine) -> str:
     """Tests API connectivity and authentication.
 
     Returning 'ok' indicates that the integration works like it is supposed to.
@@ -657,11 +657,7 @@ def traffic_analysis_command(client: PolicyComputeEngine, args: Dict[str, Any]) 
     )
 
     response = client.get_traffic_flows_async(query_name=query_name, traffic_query=traffic_query)
-    json_response = []
-
-    for resp in response:
-        resp = resp.to_json()
-        json_response.append(resp)
+    json_response = [resp.to_json() for resp in response]
 
     readable_output = prepare_traffic_analysis_output(json_response)
 
@@ -701,7 +697,7 @@ def virtual_service_create_command(client: PolicyComputeEngine, args: Dict[str, 
         if EXISTING_VIRTUAL_SERVICE in str(e):
             try:
                 virtual_services = client.virtual_services.get(params={"name": name})
-                demisto.info("Virtual service already exists.")
+                demisto.debug("Virtual service already exists.")
                 for virtual_service in virtual_services:
                     if virtual_service.name == name:
                         virtual_service_json = virtual_service.to_json()
@@ -754,8 +750,9 @@ def service_binding_create_command(client: PolicyComputeEngine, args: Dict[str, 
 
     response = client.service_bindings.create(service_bindings)  # type: ignore
     results = json.loads(json.dumps(response, cls=IllumioEncoder))
-    context_data = {}
-    context_data["hrefs"] = [service.get("href", "") for service in results.get("service_bindings", [])]
+    context_data = {
+        "hrefs": [service.get("href", "") for service in results.get("service_bindings", [])]
+    }
     readable_output = prepare_service_binding_output(results)
 
     return CommandResults(
@@ -833,7 +830,7 @@ def workload_get_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> C
     readable_output = prepare_workload_get_output(results)
 
     return CommandResults(
-        outputs_prefix="Illumio.Workload",
+        outputs_prefix="Illumio.Workloads",
         readable_output=readable_output,
         outputs_key_field="href",
         outputs=remove_empty_elements(results),
@@ -851,7 +848,7 @@ def workloads_list_command(client: PolicyComputeEngine, args: Dict[str, Any]) ->
     Returns:
         CommandResult object
     """
-    max_results = arg_to_number(args.get("max_results", "500"), arg_name="max_results")
+    max_results = arg_to_number(args.get("max_results", 500), arg_name="max_results")
     name = args.get("name")
     hostname = args.get("hostname")
     ip_address = args.get("ip_address")
@@ -932,7 +929,7 @@ def enforcement_boundary_create_command(
         if EXISTING_ENFORCEMENT_BOUNDARY in str(e):
             try:
                 enforcement_boundaries = client.enforcement_boundaries.get(params={"name": name})
-                demisto.info("Enforcement boundary already exists.")
+                demisto.debug("Enforcement boundary already exists.")
                 for enforcement_boundary in enforcement_boundaries:
                     if enforcement_boundary.name == name:
                         enforcement_boundary_json = enforcement_boundary.to_json()
@@ -1013,7 +1010,7 @@ def ip_list_get_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> Co
     readable_output = prepare_ip_list_get_output(results)
 
     return CommandResults(
-        outputs_prefix="Illumio.IPList",
+        outputs_prefix="Illumio.IPLists",
         outputs_key_field="href",
         outputs=remove_empty_elements(results),
         readable_output=readable_output,
@@ -1034,7 +1031,7 @@ def ip_lists_get_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> C
     description = args.get("description")
     fqdn = args.get("fqdn")
     ip_address = args.get("ip_address")
-    max_results = arg_to_number(args.get("max_results", "500"), arg_name="max_results")
+    max_results = arg_to_number(args.get("max_results", 500), arg_name="max_results")
     name = args.get("name")
 
     validate_ip_lists_get_arguments(max_results, ip_address)
@@ -1080,7 +1077,7 @@ def ruleset_create_command(client: PolicyComputeEngine, args: Dict[str, Any]) ->
         if EXISTING_RULESET in str(e):
             try:
                 rule_sets = client.rule_sets.get(params={"name": name})
-                demisto.info("Ruleset already exists.")
+                demisto.debug("Ruleset already exists.")
                 for rule_set in rule_sets:
                     if rule_set.name == name:
                         json_response = rule_set.to_json()
@@ -1137,11 +1134,11 @@ def rule_create_command(client: PolicyComputeEngine, args: Dict[str, Any]) -> Co
         existing_rule = {"ingress_services": sorted([href.get('href') for href in rules.get("ingress_services", {})]),
                          "providers": sorted(extract_values_from_dictionary(rules.get("providers"))),
                          "consumers": sorted(extract_values_from_dictionary(rules.get("consumers"))),
-                         "resolve_providers_as": sorted(rules.get("resolve_labels_as").get("providers")),
-                         "resolve_consumers_as": sorted(rules.get("resolve_labels_as").get("consumers"))
+                         "resolve_providers_as": sorted(rules.get("resolve_labels_as", {}).get("providers")),
+                         "resolve_consumers_as": sorted(rules.get("resolve_labels_as", {}).get("consumers"))
                          }
         if params == existing_rule:
-            demisto.info("Found existing Rule bounded to the Ruleset: {}.".format(ruleset_href))
+            demisto.debug("Found existing Rule bounded to the Ruleset: {}.".format(ruleset_href))
             rule_href = rules.get("href")
             response = client.rules.get_by_reference(rule_href)
             break
@@ -1201,7 +1198,7 @@ def main():
         client.set_credentials(api_user, api_key)
 
         if command == "test-module":
-            return_results(test_module(client))
+            return_results(command_test_module(client))
         else:
             illumio_commands = {
                 "illumio-traffic-analysis": traffic_analysis_command,

@@ -14,8 +14,16 @@
         "Security",
         "Incident Response"
     ],
-    "useCases": ["Rapid Breach Response"],
-    "keywords": ["Zero Trust", "Security", "Network", "Port Blocking", "Traffic Management"],
+    "useCases": [
+        "Rapid Breach Response"
+    ],
+    "keywords": [
+        "Zero Trust",
+        "Security",
+        "Network",
+        "Port Blocking",
+        "Traffic Management"
+    ],
     "marketplaces": [
         "xsoar",
         "marketplacev2"
